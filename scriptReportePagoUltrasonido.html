@@ -1,0 +1,262 @@
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    cargarRadiologosReporte();
+    const today = new Date();
+    document.getElementById('mes').value = today.getMonth() + 1;
+    document.getElementById('anio').value = today.getFullYear();
+    document.getElementById('quincena').value = 'completo';
+    document.getElementById('reportTitle').textContent = '';
+  });
+
+  function cargarRadiologosReporte() {
+    google.script.run
+      .withSuccessHandler(function (radiologosList) {
+        const select = document.getElementById('radiologo');
+        select.innerHTML = '<option disabled selected value="">Seleccione radiólogo...</option>';
+        radiologosList.forEach(nombre => {
+          const option = document.createElement('option');
+          option.value = nombre;
+          option.textContent = nombre;
+          select.appendChild(option);
+        });
+        select.addEventListener('change', cargarEmailPersonal);
+      })
+      .obtenerRadiologos();
+  }
+
+  function cargarEmailPersonal() {
+    const selectedPersonal = document.getElementById('radiologo').value;
+    google.script.run
+      .withSuccessHandler(function (email) {
+        document.getElementById('emailRecipient').value = email;
+      })
+      .obtenerEmailParaPersonal(selectedPersonal);
+  }
+
+  function calcularPagos() {
+    const radiologo = document.getElementById('radiologo').value;
+    const mes = parseInt(document.getElementById('mes').value);
+    const anio = parseInt(document.getElementById('anio').value);
+    const quincena = document.getElementById('quincena').value;
+
+    if (!radiologo) {
+      mostrarMensaje('Por favor, seleccione un radiólogo.', 'error');
+      return;
+    }
+
+    google.script.run.withSuccessHandler(function (response) {
+      const resumen = response.resumen;
+      const totalGananciaSinIVA = response.totalGananciaSinIVA;
+      const totalIVA = response.totalIVA;
+      const totalGananciaConIVA = response.totalGananciaConIVA;
+
+      const divResultado = document.getElementById('resultado');
+      let html = `
+        <h3>Pagos por Ultrasonido</h3>
+        <table>
+          <tr>
+            <th>Tipo de Ultrasonido</th>
+            <th>Costo por Ultrasonido</th>
+            <th>Cantidad</th>
+            <th>Ganancia Sin IVA</th>
+            <th>IVA (4%)</th>
+            <th>Ganancia con IVA</th>
+          </tr>
+      `;
+
+      let hasData = false;
+      for (const key in resumen) {
+        const r = resumen[key];
+        if (r.cantidad > 0) {
+          hasData = true;
+          html += `
+            <tr>
+              <td class="text-left">${r.nombre}</td>
+              <td>₡${r.costo_unitario.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td>${r.cantidad}</td>
+              <td>₡${r.ganancia_sin_iva.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td>₡${r.iva_monto.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td>₡${r.ganancia_con_iva.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+          `;
+        }
+      }
+
+      if (!hasData) {
+        html += `<tr><td colspan="6">No hay registros de ultrasonido para este período.</td></tr>`;
+      } else {
+        html += `
+          <tr class="grand-total-row">
+            <td class="text-left" colspan="3">TOTALES</td>
+            <td>₡${totalGananciaSinIVA.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>₡${totalIVA.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>₡${totalGananciaConIVA.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>
+        `;
+      }
+
+      html += '</table>';
+      divResultado.innerHTML = html;
+
+      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      const selectedMonthName = monthNames[parseInt(mes) - 1];
+      const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+
+      document.getElementById('reportTitle').textContent = `Reporte de Ultrasonido - ${radiologo} - ${selectedMonthName} ${anio} (${quincenaText})`;
+      document.getElementById('action-section').style.display = 'block';
+      document.getElementById('emailMessage').textContent = '';
+    }).calcularPagosRadiologia(radiologo, mes, anio, quincena);
+  }
+
+  function enviarReporteUltrasonido() {
+    const emailRecipient = document.getElementById('emailRecipient').value;
+    const radiologo = document.getElementById('radiologo').value;
+    const mes = document.getElementById('mes').value;
+    const anio = parseInt(document.getElementById('anio').value);
+    const quincena = document.getElementById('quincena').value;
+
+    if (!emailRecipient || !emailRecipient.includes('@')) {
+      mostrarEmailMensaje("Por favor, ingrese un email válido.", "error");
+      return;
+    }
+
+    const reportContent = document.getElementById('printableReportContent').innerHTML;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const selectedMonthName = monthNames[parseInt(mes) - 1];
+    const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+    const subject = `Reporte de Ultrasonido - ${radiologo} - ${selectedMonthName} ${anio} (${quincenaText})`;
+    const fileName = `Reporte_Ultrasonido_${radiologo.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+
+    mostrarEmailMensaje("Enviando reporte...", "info");
+
+    google.script.run
+      .withSuccessHandler(response => {
+        if (response.success) {
+          mostrarEmailMensaje(response.message, "success");
+        } else {
+          mostrarEmailMensaje(response.message, "error");
+        }
+      })
+      .withFailureHandler(error => {
+        mostrarMensaje("❌ Error al enviar el reporte: " + error.message, "error");
+      })
+      .enviarReportePDF(reportContent, emailRecipient, subject, fileName);
+  }
+
+  function descargarReporteUltrasonidoPDF() {
+    const radiologo = document.getElementById('radiologo').value;
+    const mes = document.getElementById('mes').value;
+    const anio = parseInt(document.getElementById('anio').value);
+    const quincena = document.getElementById('quincena').value;
+
+    if (!radiologo) {
+      mostrarMensaje('Por favor, genere el reporte primero seleccionando un radiólogo.', 'error');
+      return;
+    }
+
+    const reportContent = document.getElementById('printableReportContent').innerHTML;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const selectedMonthName = monthNames[parseInt(mes) - 1];
+    const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+    const fileName = `Reporte_Ultrasonido_${radiologo.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+    const pageTitle = `Reporte de Ultrasonido - ${radiologo} - ${selectedMonthName} ${anio}`;
+
+    mostrarEmailMensaje("Generando PDF para descarga...", "info");
+
+    google.script.run
+      .withSuccessHandler(function (base64Pdf) {
+        if (base64Pdf) {
+          const blob = b64toBlob(base64Pdf, 'application/pdf');
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          mostrarEmailMensaje("✅ Reporte descargado con éxito.", "success");
+        } else {
+          mostrarMensaje("❌ No se pudo generar el PDF para descarga.", "error");
+        }
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensaje("❌ Error al descargar el PDF: " + error.message, "error");
+      })
+      .generarPdfParaDescarga(reportContent, fileName, 'stylesReportePagoUltrasonido', pageTitle);
+  }
+
+  function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    return new Blob(byteArrays, { type: contentType });
+  }
+
+  function mostrarEmailMensaje(mensaje, tipo) {
+    let mensajeDiv = document.getElementById('emailMessage');
+    if (!mensajeDiv) {
+      mensajeDiv = document.createElement('div');
+      mensajeDiv.id = 'emailMessage';
+      mensajeDiv.className = 'email-message';
+      document.getElementById('action-section').appendChild(mensajeDiv);
+    }
+    mensajeDiv.className = 'email-message';
+    mensajeDiv.textContent = mensaje;
+
+    if (tipo === 'success') {
+      mensajeDiv.classList.add('alert-success');
+    } else if (tipo === 'error') {
+      mensajeDiv.classList.add('alert-error');
+    } else if (tipo === 'info') {
+      mensajeDiv.classList.add('alert-info');
+    }
+
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = 'email-message';
+      }, 5000);
+    }
+  }
+
+  function mostrarMensaje(mensaje, tipo) {
+    let mensajeDiv = document.getElementById('formMessage') || document.getElementById('emailMessage');
+    if (!mensajeDiv) {
+      mensajeDiv = document.createElement('div');
+      mensajeDiv.id = 'formMessage';
+      mensajeDiv.className = 'form-message';
+      const controlsDiv = document.getElementById('reportControls');
+      if (controlsDiv) {
+        controlsDiv.prepend(mensajeDiv);
+      } else {
+        document.body.prepend(mensajeDiv);
+      }
+    }
+    mensajeDiv.className = 'form-message';
+    mensajeDiv.textContent = mensaje;
+
+    if (tipo === 'success') {
+      mensajeDiv.classList.add('alert-success');
+    } else if (tipo === 'error') {
+      mensajeDiv.classList.add('alert-error');
+    } else if (tipo === 'info') {
+      mensajeDiv.classList.add('alert-info');
+    }
+
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = 'form-message';
+      }, 3000);
+    }
+  }
+</script>

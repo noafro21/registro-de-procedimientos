@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <?!= include('stylesReportePagoHorasExtras'); ?>
+    <?!= include('stylesBotonRegresar'); ?>
+</head>
+
+<body>
+    <!-- Botón para volver al menú principal -->
+    <button class="back-button" onclick="volverAlMenu()" title="Volver al Menú Principal">
+        <span class="back-button-icon">←</span>
+    </button>
+
+    <div id="reportControls">
+        <h2>Reporte de Horas Extras</h2>
+        <label for="trabajador">Seleccione Trabajador:</label>
+        <select id="trabajador">
+            <option disabled selected value="">Cargando trabajadores...</option>
+        </select>
+        <label for="mes">Mes:</label>
+        <select id="mes">
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            <option value="7">Julio</option>
+            <option value="8">Agosto</option>
+            <option value="9">Septiembre</option>
+            <option value="10">Octubre</option>
+            <option value="11">Noviembre</option>
+            <option value="12">Diciembre</option>
+        </select>
+        <label for="anio">Año:</label>
+        <select id="anio">
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+        </select>
+        <label for="quincena">Quincena:</label>
+        <select id="quincena">
+            <option value="completo">Mes Completo</option>
+            <option value="1-15">1 al 15</option>
+            <option value="16-31">16 al 31</option>
+        </select>
+        <button onclick="calcularHorasExtras()">Calcular Reporte</button>
+    </div>
+
+    <div id="printableReportContent">
+        <h2 id="reportTitle"></h2>
+        <div id="resultado"></div>
+    </div>
+
+    <!-- Sección para enviar/descargar reporte (fuera del contenido imprimible) -->
+    <div id="action-section">
+        <h3>Opciones de Reporte</h3>
+        <label for="emailRecipient">Email Destinatario:</label>
+        <input type="email" id="emailRecipient" placeholder="ejemplo@dominio.com" required />
+        <button onclick="enviarReporteHorasExtras()">Enviar Reporte</button>
+        <button onclick="descargarReporteHorasExtrasPDF()">Descargar PDF</button>
+        <div id="emailMessage"></div>
+    </div>
+
+    <?!= include('scriptReportePagoHorasExtras'); ?>
+    <?!= include('scriptBotonRegresar'); ?>
+</body>
+
+</html>

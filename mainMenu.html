@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <?!= include('stylesMainMenu'); ?>
+</head>
+
+<body>
+    <div class="menu-container">
+        <h1>Menú Principal</h1>
+        <p>Selecciona una opción para continuar:</p>
+
+        <div class="menu-section">
+            <h3 class="section-title">Procedimientos</h3>
+            <div class="menu-options">
+                <button onclick="navigateTo('formularioProcedimientos')">Registrar Procedimiento</button>
+                <button onclick="navigateTo('reportePagoProcedimientos')">Reporte de Procedimientos</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3 class="section-title">Ultrasonidos</h3>
+            <div class="menu-options">
+                <button onclick="navigateTo('formularioUltrasonido')">Registrar Ultrasonido</button>
+                <button onclick="navigateTo('reportePagoUltrasonido')">Reporte de Radiología</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3 class="section-title">Horas Extras</h3>
+            <div class="menu-options">
+                <button onclick="navigateTo('formularioHorasExtras')">Registrar Horas Extras</button>
+                <button onclick="navigateTo('reportePagoHorasExtras')">Reporte de Horas Extras</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <h3 class="section-title">Biopsias</h3>
+            <div class="menu-options">
+                <button onclick="navigateTo('registroBiopsias')">Registrar Biopsia</button>
+                <button onclick="navigateTo('buscarBiopsias')">Buscar y Reportar Biopsias</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            Sistema de Registro Médico ©
+            <?= new Date().getFullYear() ?>
+        </div>
+    </div>
+
+    <?!= include('scriptMainMenu'); ?>
+</body>
+
+</html>

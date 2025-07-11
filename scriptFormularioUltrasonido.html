@@ -1,0 +1,99 @@
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Establecer la fecha actual por defecto
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById('fecha_ultrasonido').value = `${yyyy}-${mm}-${dd}`;
+
+    cargarRadiologos();
+    // Vaciar todos los inputs de tipo number al cargar el formulario
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+      input.value = "";
+    });
+  });
+
+  function guardarUltrasonido() {
+    const datos = {
+      fecha: document.getElementById('fecha_ultrasonido').value,
+      radiologo: document.getElementById('radiologo').value,
+      abdomen_completo: +document.getElementById('abdomen_completo').value,
+      abdomen_superior: +document.getElementById('abdomen_superior').value,
+      mama: +document.getElementById('mama').value,
+      testiculos: +document.getElementById('testiculos').value,
+      tracto_urinario: +document.getElementById('tracto_urinario').value,
+      tejidos_blandos: +document.getElementById('tejidos_blandos').value,
+      tiroides: +document.getElementById('tiroides').value,
+      articular: +document.getElementById('articular').value,
+      pelvico: +document.getElementById('pelvico').value,
+      doppler: +document.getElementById('doppler').value
+    };
+
+    if (!datos.fecha || !datos.radiologo) {
+      mostrarMensaje("Por favor, seleccione una fecha y un radiólogo.", "error");
+      return;
+    }
+
+    mostrarMensaje("Guardando registro...", "info");
+
+    google.script.run
+      .withSuccessHandler(() => {
+        mostrarMensaje("✅ Registro de ultrasonido guardado con éxito.", "success");
+        document.getElementById("registroUltrasonidoForm").reset();
+        // Restablecer la fecha actual después de resetear
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('fecha_ultrasonido').value = `${yyyy}-${mm}-${dd}`;
+        document.getElementById('radiologo').value = "";
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+          input.value = "";
+        });
+      })
+      .withFailureHandler(error => {
+        mostrarMensaje("❌ Error al guardar el registro de ultrasonido: " + error.message, "error");
+      })
+      .guardarRegistroUltrasonido(datos);
+  }
+
+  function cargarRadiologos() {
+    google.script.run
+      .withSuccessHandler(function (radiologosList) {
+        const select = document.getElementById('radiologo');
+        select.innerHTML = '<option disabled selected value="">Seleccione radiólogo...</option>';
+        radiologosList.forEach(nombre => {
+          const option = document.createElement('option');
+          option.value = nombre;
+          option.textContent = nombre;
+          select.appendChild(option);
+        });
+      })
+      .obtenerRadiologos();
+  }
+
+  function mostrarMensaje(mensaje, tipo) {
+    let mensajeDiv = document.getElementById('formMessage');
+    if (!mensajeDiv) {
+      mensajeDiv = document.createElement('div');
+      mensajeDiv.id = 'formMessage';
+      document.getElementById('registroUltrasonidoForm').prepend(mensajeDiv);
+    }
+    mensajeDiv.className = '';
+    mensajeDiv.textContent = mensaje;
+    if (tipo === 'success') {
+      mensajeDiv.classList.add('alert-success');
+    } else if (tipo === 'error') {
+      mensajeDiv.classList.add('alert-error');
+    } else if (tipo === 'info') {
+      mensajeDiv.classList.add('alert-info');
+    }
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = '';
+      }, 3000);
+    }
+  }
+</script>

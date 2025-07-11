@@ -1,0 +1,37 @@
+<script>
+  // Función para navegar a diferentes "páginas" de la aplicación web
+  function navigateTo(pageName) {
+    try {
+      const isDevEnvironment = window.location.href.includes('userCodeAppPanel');
+
+      if (isDevEnvironment) {
+        // Mostrar mensaje de carga usando clases CSS
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'loading-overlay';
+        loadingDiv.innerHTML = '<div class="loading-message">Cargando página...</div>';
+        document.body.appendChild(loadingDiv);
+
+        google.script.run
+          .withSuccessHandler(function (html) {
+            document.open();
+            document.write(html);
+            document.close();
+          })
+          .withFailureHandler(function (error) {
+            console.error('ERROR (Client): Error al cargar la página:', error);
+            alert('Error al cargar la página: ' + error.message);
+            document.body.removeChild(loadingDiv);
+          })
+          .getPageHtml(pageName);
+      } else {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const newUrl = `${baseUrl}?page=${pageName}`;
+        console.log('DEBUG (Client): Intentando navegar a:', newUrl);
+        window.top.location.href = newUrl;
+      }
+    } catch (error) {
+      console.error('ERROR (Client): Se produjo un error al intentar navegar:', error);
+      alert('Se produjo un error al intentar navegar: ' + error.message + '. Revise la consola del navegador.');
+    }
+  }
+</script>

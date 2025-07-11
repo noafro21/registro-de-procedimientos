@@ -1,0 +1,185 @@
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Listeners para radio buttons
+    document.querySelectorAll('input[name="searchType"]').forEach(radio => {
+      radio.addEventListener('change', toggleSearchInputs);
+    });
+    toggleSearchInputs();
+
+    // Botón buscar
+    document.getElementById('btnBuscar')?.addEventListener('click', buscarBiopsiasUI);
+
+    // Botón reporte mensual
+    document.getElementById('btnReporteMensual')?.addEventListener('click', mostrarBiopsiasPorMesAnio);
+
+    // Botón descargar PDF
+    document.getElementById('btnDescargarPDF')?.addEventListener('click', descargarReporteBiopsiasPDF);
+
+    // Fecha actual por defecto
+    const fechaInput = document.getElementById('search_fecha');
+    if (fechaInput) {
+      const today = new Date();
+      fechaInput.value = today.toISOString().slice(0, 10);
+    }
+
+    // Año actual por defecto
+    const yearSelect = document.getElementById('reportAnio');
+    if (yearSelect) {
+      const currentYear = new Date().getFullYear();
+      for (let i = 0; i < yearSelect.options.length; i++) {
+        if (parseInt(yearSelect.options[i].value) === currentYear) {
+          yearSelect.selectedIndex = i;
+          break;
+        }
+      }
+    }
+  });
+
+  function toggleSearchInputs() {
+    const type = document.querySelector('input[name="searchType"]:checked')?.value;
+    document.getElementById('search_fecha').disabled = type !== 'fecha';
+    document.getElementById('search_cedula').disabled = type !== 'cedula';
+    document.getElementById('search_nombre').disabled = type !== 'nombre';
+  }
+
+  function buscarBiopsiasUI() {
+    const type = document.querySelector('input[name="searchType"]:checked')?.value;
+    let value = '';
+    if (type === 'fecha') value = document.getElementById('search_fecha')?.value;
+    if (type === 'cedula') value = document.getElementById('search_cedula')?.value.trim();
+    if (type === 'nombre') value = document.getElementById('search_nombre')?.value.trim().toLowerCase();
+
+    if (!value) {
+      mostrarMensajeBusqueda("Ingrese un valor de búsqueda", "error");
+      return;
+    }
+
+    google.script.run
+      .withSuccessHandler(mostrarResultadosBiopsias)
+      .buscarBiopsiasServidorV2(type, value);
+  }
+
+  function mostrarResultadosBiopsias(resultados) {
+    const cont = document.getElementById("resultado_busqueda");
+    if (!Array.isArray(resultados) || resultados.length === 0) {
+      mostrarMensajeBusqueda("No se encontraron resultados.", "info");
+      cont.innerHTML = "";
+      return;
+    }
+    let html = `<table>
+    <thead>
+      <tr>
+        <th>Fecha Toma</th>
+        <th>Recibida</th>
+        <th>Enviada</th>
+        <th>Cédula</th>
+        <th>Teléfono</th>
+        <th>Nombre Cliente</th>
+        <th>Frascos Gastro</th>
+        <th>Frascos Colon</th>
+        <th>Médico</th>
+        <th>Comentario</th>
+      </tr>
+    </thead>
+    <tbody>`;
+    resultados.forEach(row => {
+      let fechaToma = '';
+      try { fechaToma = new Date(row[0]).toLocaleDateString('es-CR'); } catch { fechaToma = row[0] || ''; }
+      html += `<tr>
+      <td>${fechaToma}</td>
+      <td>${row[1] ? 'Sí' : 'No'}</td>
+      <td>${row[2] ? 'Sí' : 'No'}</td>
+      <td>${row[3] || ''}</td>
+      <td>${row[4] || ''}</td>
+      <td style="text-align:left;">${row[5] || ''}</td>
+      <td>${row[6] || 0}</td>
+      <td>${row[7] || 0}</td>
+      <td style="text-align:left;">${row[8] || ''}</td>
+      <td style="text-align:left;">${row[9] || ''}</td>
+    </tr>`;
+    });
+    html += '</tbody></table>';
+    cont.innerHTML = html;
+    mostrarMensajeBusqueda("Búsqueda completada.", "success");
+  }
+
+  function mostrarBiopsiasPorMesAnio() {
+    const mes = parseInt(document.getElementById('reportMes').value);
+    const anio = parseInt(document.getElementById('reportAnio').value);
+    if (isNaN(mes) || isNaN(anio)) {
+      mostrarMensajeBusqueda("Por favor, seleccione un mes y un año válidos.", "error");
+      return;
+    }
+    mostrarMensajeBusqueda(`Generando reporte para ${mes}/${anio}...`, "info");
+    document.getElementById('resultado_busqueda').innerHTML = '';
+    google.script.run
+      .withSuccessHandler(function (data) {
+        if (!data || data.length === 0) {
+          mostrarMensajeBusqueda(`No se encontraron biopsias para ${mes}/${anio}.`, "info");
+          document.getElementById('action-section').style.display = 'none';
+          return;
+        }
+        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        document.getElementById('reportTitle').textContent = `Reporte de Biopsias - ${monthNames[mes - 1]} ${anio}`;
+        let html = `<table>
+        <thead>
+          <tr>
+            <th>Fecha Toma</th>
+            <th>Recibida</th>
+            <th>Enviada</th>
+            <th>Cédula</th>
+            <th>Teléfono</th>
+            <th>Nombre Cliente</th>
+            <th>Frascos Gastro</th>
+            <th>Frascos Colon</th>
+            <th>Médico</th>
+            <th>Comentario</th>
+          </tr>
+        </thead>
+        <tbody>`;
+        data.forEach(row => {
+          let fechaToma = '';
+          try { fechaToma = new Date(row[0]).toLocaleDateString('es-CR'); } catch { fechaToma = row[0] || ''; }
+          html += `<tr>
+          <td>${fechaToma}</td>
+          <td>${row[1] ? 'Sí' : 'No'}</td>
+          <td>${row[2] ? 'Sí' : 'No'}</td>
+          <td>${row[3] || ''}</td>
+          <td>${row[4] || ''}</td>
+          <td style="text-align:left;">${row[5] || ''}</td>
+          <td>${row[6] || 0}</td>
+          <td>${row[7] || 0}</td>
+          <td style="text-align:left;">${row[8] || ''}</td>
+          <td style="text-align:left;">${row[9] || ''}</td>
+        </tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('resultado_busqueda').innerHTML = html;
+        document.getElementById('action-section').style.display = 'block';
+        document.getElementById('emailMessage').textContent = '';
+        mostrarMensajeBusqueda("Reporte generado con éxito.", "success");
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensajeBusqueda("Error al generar reporte: " + error.message, "error");
+        document.getElementById('action-section').style.display = 'none';
+      })
+      .obtenerBiopsiasPorMesAnio(mes, anio);
+  }
+
+  function mostrarMensajeBusqueda(mensaje, tipo) {
+    const mensajeDiv = document.getElementById('searchMessage');
+    if (!mensajeDiv) return;
+    mensajeDiv.textContent = mensaje;
+    mensajeDiv.className = 'message-area ' + tipo;
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = 'message-area';
+      }, 5000);
+    }
+  }
+
+  function descargarReporteBiopsiasPDF() {
+    // Implementa aquí la lógica de descarga PDF si la tienes
+  }
+</script>

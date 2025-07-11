@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top" />
+    <?!= include('stylesRegistroBiopsias'); ?>
+    <?!= include('stylesBotonRegresar'); ?>
+</head>
+
+<body>
+    <!-- Botón para volver al menú principal -->
+    <button class="back-button" onclick="volverAlMenu()" title="Volver al Menú Principal">
+        <span class="back-button-icon">←</span>
+    </button>
+
+    <form id="registroBiopsiaForm" onsubmit="guardarBiopsia(); return false;">
+        <h2>Registro de Biopsias</h2>
+
+        <label for="fecha_toma">Fecha de la Toma:</label>
+        <input type="date" id="fecha_toma" required />
+
+        <label for="cedula">Cédula:</label>
+        <input type="text" id="cedula" placeholder="Número de cédula" />
+
+        <label for="telefono">Teléfono:</label>
+        <input type="text" id="telefono" placeholder="Número de teléfono" />
+
+        <label for="nombre_cliente">Nombre Cliente:</label>
+        <input type="text" id="nombre_cliente" placeholder="Nombre completo del cliente" required />
+
+        <div class="frascos-group">
+            <label for="frascos_gastro">Frascos Gastro:</label>
+            <input type="number" id="frascos_gastro" min="0" value="0" />
+            <label for="frascos_colon">Frascos Colon:</label>
+            <input type="number" id="frascos_colon" min="0" value="0" />
+        </div>
+
+        <label for="medico">Médico:</label>
+        <select id="medico" required>
+            <option disabled selected value="">Cargando médicos...</option>
+        </select>
+
+        <label for="comentario">Comentario:</label>
+        <textarea id="comentario" placeholder="Comentarios adicionales sobre la biopsia"></textarea>
+
+        <input type="submit" value="Guardar Biopsia" />
+        <div id="formMessage" class="message-area"></div>
+    </form>
+
+    <?!= include('scriptRegistroBiopsias'); ?>
+    <?!= include('scriptBotonRegresar'); ?>
+</body>
+
+</html>

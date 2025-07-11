@@ -1,0 +1,316 @@
+<!-- filepath: c:\Users\adonf\Desktop\Registro de procedimientos\stylesReportePagoProcedimientos.html -->
+<style>
+  /* ======= Estilos generales ======= */
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #EFEEEA;
+    color: #273F4F;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  /* ======= Contenedores principales ======= */
+  .container,
+  #reportControls,
+  #printableReportContent,
+  #action-section {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+  }
+
+  /* ======= Títulos ======= */
+  h2 {
+    color: #273F4F;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 24px;
+    border-bottom: 2px solid #FE7743;
+    padding-bottom: 10px;
+  }
+
+  h3 {
+    color: #FE7743;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    font-size: 18px;
+    border-bottom: 2px solid #273F4F;
+    padding-bottom: 8px;
+  }
+
+  /* ======= Formularios y controles ======= */
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #273F4F;
+    margin-top: 10px;
+  }
+
+  select,
+  input[type="email"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #273F4F;
+    border-radius: 4px;
+    font-size: 16px;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    background-color: #fff;
+    color: #273F4F;
+  }
+
+  button {
+    background-color: #273F4F;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 12px 20px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-right: 10px;
+    margin-top: 10px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+  }
+
+  button:hover {
+    background-color: #FE7743;
+  }
+
+  #action-section button {
+    background-color: #FE7743;
+    margin-right: 10px;
+  }
+
+  #action-section button:last-child {
+    background-color: #28a745;
+    margin-right: 0;
+  }
+
+  #action-section button:hover {
+    opacity: 0.9;
+  }
+
+  /* ======= Resultados y tablas ======= */
+  #resultado {
+    margin-top: 25px;
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  th,
+  td {
+    border: 1px solid #c0c0c0;
+    padding: 12px;
+    text-align: center;
+    font-size: 16px;
+  }
+
+  th {
+    background-color: #FE7743;
+    color: #fff;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  tr:nth-child(even) {
+    background-color: #e0e0e0;
+  }
+
+  tr:nth-child(odd) {
+    background-color: #fff;
+  }
+
+  tr.total-row {
+    font-weight: bold;
+    background-color: #fce2d9;
+    color: #273F4F;
+  }
+
+  tr.grand-total-row,
+  .grand-total-row td {
+    font-weight: bold;
+    background: #273F4F;
+    color: #fff;
+    border-top: 2px solid #FE7743;
+  }
+
+  /* ======= Fila de subtotales y alineación izquierda ======= */
+  .subtotal-row {
+    font-weight: bold;
+    background-color: #e6e6e6;
+  }
+
+  .text-left {
+    text-align: left;
+  }
+
+  /* ======= Mensajes de alerta ======= */
+  .alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .alert-info {
+    color: #273F4F;
+    background-color: #e9f0f5;
+    border: 1px solid #c5d5e5;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  /* ======= Solo pantalla (oculto en impresión) ======= 
+  .solo-pantalla {
+    display: none;
+  }*/
+
+  /* ======= Totales y descuento ======= */
+  .totales-container {
+    margin-top: 30px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .totales-title {
+    color: #FE7743;
+    border-bottom: 2px solid #273F4F;
+    padding-bottom: 8px;
+    margin-bottom: 18px;
+  }
+
+  .totales-table {
+    width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  #motivoDescuento,
+  #montoDescontar,
+  #montoExtra {
+    width: 120px;
+    border: 1px solid #FE7743;
+    border-radius: 4px;
+    padding: 6px;
+  }
+
+  #motivoDescuento {
+    width: 200px;
+  }
+
+  #montoDescontarTexto,
+  #montoExtraTexto,
+  #motivoDescuentoTexto {
+    display: none;
+    color: #FE7743;
+    font-weight: bold;
+  }
+
+  #comentarioDescuento {
+    margin-top: 10px;
+    color: #FE7743;
+    font-weight: bold;
+    font-size: 13px;
+  }
+
+  /* ======= Responsive adjustments ======= */
+  @media (max-width: 900px) {
+
+    .container,
+    #reportControls,
+    #printableReportContent,
+    #action-section {
+      padding: 20px;
+    }
+  }
+
+  @media (max-width: 768px) {
+
+    .container,
+    #reportControls,
+    #printableReportContent,
+    #action-section {
+      padding: 12px;
+    }
+
+    h2 {
+      font-size: 20px;
+    }
+
+    button,
+    select,
+    input[type="email"] {
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      font-size: 13px;
+      padding: 6px 6px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    body {
+      padding: 5px;
+    }
+
+    @media print {
+      .solo-pantalla {
+        display: none;
+      }
+    }
+
+    .container,
+    #reportControls,
+    #printableReportContent,
+    #action-section {
+      padding: 6px;
+    }
+
+    h2 {
+      font-size: 18px;
+    }
+
+    h3 {
+      font-size: 16px;
+    }
+  }
+
+  /* ======= Email message ======= */
+  #emailMessage {
+    margin-top: 10px;
+  }
+</style>

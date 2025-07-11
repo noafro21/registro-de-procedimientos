@@ -1,0 +1,125 @@
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Establecer la fecha actual por defecto
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById('fecha').value = `${yyyy}-${mm}-${dd}`;
+
+    // Cargar solo personal de horas extras (Enfermero y Secretaria)
+    mostrarMensaje("Cargando lista de trabajadores...", "info");
+
+    google.script.run
+      .withSuccessHandler(function (personalList) {
+        const select = document.getElementById('trabajador');
+        if (!personalList || personalList.length === 0) {
+          select.innerHTML = '<option disabled selected value="">No hay trabajadores disponibles</option>';
+          mostrarMensaje("No se encontraron trabajadores en la hoja 'Personal'", "error");
+          return;
+        }
+        select.innerHTML = '<option disabled selected value="">Seleccione trabajador...</option>';
+        personalList.forEach(nombre => {
+          const option = document.createElement('option');
+          option.value = nombre;
+          option.textContent = nombre;
+          select.appendChild(option);
+        });
+        mostrarMensaje(`${personalList.length} trabajadores cargados`, "success");
+        setTimeout(() => {
+          const mensajeDiv = document.getElementById('formMessage');
+          if (mensajeDiv) {
+            mensajeDiv.textContent = '';
+            mensajeDiv.className = '';
+          }
+        }, 2000);
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensaje("Error al cargar el personal: " + error.message, "error");
+        const select = document.getElementById('trabajador');
+        select.innerHTML = '<option disabled selected value="">Error al cargar trabajadores</option>';
+      })
+      .obtenerPersonalFiltrado([4, 5]);
+  });
+
+  function guardarHorasExtras() {
+    // Obtener valores del formulario
+    const fecha = document.getElementById('fecha').value;
+    const trabajador = document.getElementById('trabajador').value;
+    const cantidadHoras = document.getElementById('cantidad_horas').value;
+
+    // Validar datos
+    if (!fecha) {
+      mostrarMensaje("Por favor, seleccione una fecha", "error");
+      return false;
+    }
+    if (!trabajador) {
+      mostrarMensaje("Por favor, seleccione un trabajador", "error");
+      return false;
+    }
+    if (!cantidadHoras || parseFloat(cantidadHoras) <= 0) {
+      mostrarMensaje("Por favor, ingrese una cantidad de horas válida", "error");
+      return false;
+    }
+
+    const datos = {
+      fecha: fecha,
+      trabajador: trabajador,
+      cantidad_horas: parseFloat(cantidadHoras)
+    };
+
+    mostrarMensaje("Guardando registro...", "info");
+
+    // Deshabilitar el botón de envío para evitar múltiples envíos
+    const submitButton = document.querySelector('input[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.value = "Guardando...";
+
+    google.script.run
+      .withSuccessHandler(() => {
+        mostrarMensaje("✅ Registro de horas extras guardado con éxito", "success");
+        document.getElementById('trabajador').value = "";
+        document.getElementById('cantidad_horas').value = "";
+        // Actualizar la fecha al día actual
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        document.getElementById('fecha').value = `${yyyy}-${mm}-${dd}`;
+        submitButton.disabled = false;
+        submitButton.value = "Guardar Horas Extras";
+      })
+      .withFailureHandler(error => {
+        mostrarMensaje("❌ Error al guardar el registro: " + error.message, "error");
+        submitButton.disabled = false;
+        submitButton.value = "Guardar Horas Extras";
+      })
+      .guardarHorasExtrasArriba(datos);
+
+    return false;
+  }
+
+  function mostrarMensaje(mensaje, tipo) {
+    let mensajeDiv = document.getElementById('formMessage');
+    if (!mensajeDiv) {
+      mensajeDiv = document.createElement('div');
+      mensajeDiv.id = 'formMessage';
+      document.getElementById('registroHorasExtrasForm').prepend(mensajeDiv);
+    }
+    mensajeDiv.className = '';
+    mensajeDiv.textContent = mensaje;
+    if (tipo === 'success') {
+      mensajeDiv.classList.add('alert-success');
+    } else if (tipo === 'error') {
+      mensajeDiv.classList.add('alert-error');
+    } else if (tipo === 'info') {
+      mensajeDiv.classList.add('alert-info');
+    }
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = '';
+      }, 3000);
+    }
+  }
+</script>

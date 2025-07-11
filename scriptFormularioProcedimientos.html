@@ -1,0 +1,292 @@
+<script>
+  // ====== Mapeos de campos y colores ======
+  const mapeoCampos = {
+    fecha: 'fecha',
+    personal: 'personal',
+    consulta_regular: 'consulta_regular',
+    consulta_medismart: 'consulta_medismart',
+    consulta_higado: 'consulta_higado',
+    consulta_pylori: 'consulta_pylori',
+    gastro_regular: 'gastro_regular',
+    gastro_medismart: 'gastro_medismart',
+    colono_regular: 'colono_regular',
+    colono_medismart: 'colono_medismart',
+    gastocolono_regular: 'gastocolono_regular',
+    gastocolono_medismart: 'gastocolono_medismart',
+    recto_regular: 'recto_regular',
+    recto_medismart: 'recto_medismart',
+    asa_fria: 'asa_fria',
+    asa_fria2: 'asa_fria2',
+    asa_caliente: 'asa_caliente',
+    dictamen: 'dictamen',
+    comentario: 'comentario'
+  };
+
+  const coloresProcedimientos = {
+    consulta_regular: '#a637f0',
+    consulta_medismart: '#a637f0',
+    consulta_higado: '#a637f0',
+    consulta_pylori: '#a637f0',
+    gastro_regular: '#6aa84f',
+    gastro_medismart: '#6aa84f',
+    colono_regular: '#f8f87d',
+    colono_medismart: '#f8f87d',
+    gastocolono_regular: '#351c75',
+    gastocolono_medismart: '#351c75',
+    recto_regular: '#ff9900',
+    recto_medismart: '#ff9900',
+    asa_fria: '#cccccc',
+    asa_fria2: '#cccccc',
+    asa_caliente: '#cccccc',
+    dictamen: '#9fc5e8'
+  };
+
+  // ====== Inicialización al cargar DOM ======
+  document.addEventListener('DOMContentLoaded', () => {
+    // Establecer la fecha actual por defecto
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const day = today.getDate().toString().padStart(2, '0');
+    document.getElementById('fecha').value = `${year}-${month}-${day}`;
+
+    // Cargar opciones de personal
+    cargarPersonal();
+
+    // Ocultar campos de procedimientos al inicio
+    ocultarCamposProcedimiento();
+
+    // Aplicar color y listeners a campos numéricos
+    for (const id in coloresProcedimientos) {
+      const inputElement = document.getElementById(id);
+      if (inputElement) {
+        aplicarColorProcedimiento(inputElement);
+        inputElement.addEventListener('input', (event) => aplicarColorProcedimiento(event.target));
+      }
+    }
+
+    // Listener al select de personal
+    const selectPersonal = document.getElementById('personal');
+    if (selectPersonal) {
+      selectPersonal.addEventListener('change', filtrarProcedimientosPorPersonal);
+    }
+  });
+
+  // ====== Cargar personal desde servidor ======
+  function cargarPersonal() {
+    const selectPersonal = document.getElementById('personal');
+    selectPersonal.innerHTML = '<option disabled selected value="">Cargando personal...</option>';
+    google.script.run
+      .withSuccessHandler(function (personalList) {
+        selectPersonal.innerHTML = '<option disabled selected value="">Seleccione personal</option>';
+        if (Array.isArray(personalList) && personalList.length > 0) {
+          personalList.forEach(nombre => {
+            const option = document.createElement('option');
+            option.value = nombre;
+            option.textContent = nombre;
+            selectPersonal.appendChild(option);
+          });
+        } else {
+          mostrarMensaje('No se encontraron registros de personal. Verifique la hoja "Personal".', 'error');
+        }
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensaje('Error al cargar personal: ' + error.message, 'error');
+        selectPersonal.innerHTML = '<option disabled selected value="">Error al cargar personal</option>';
+      })
+      .obtenerPersonalFiltrado([0, 1, 2]);
+  }
+
+  // ====== Ocultar todos los campos de procedimiento ======
+  function ocultarCamposProcedimiento() {
+    document.querySelectorAll('.form-group[data-personal-type]').forEach(group => {
+      group.style.display = 'none';
+    });
+    document.querySelectorAll('h3').forEach(h3 => {
+      if (
+        h3.textContent.includes('Consultas') ||
+        h3.textContent.includes('Gastroscopías') ||
+        h3.textContent.includes('Colonoscopías') ||
+        h3.textContent.includes('Gastrocolonoscopías') ||
+        h3.textContent.includes('Rectoscopías') ||
+        h3.textContent.includes('Procedimientos Terapéuticos') ||
+        h3.textContent.includes('Dictamen')
+      ) {
+        h3.style.display = 'none';
+      }
+    });
+  }
+
+  // ====== Filtrar campos según personal seleccionado ======
+  function filtrarProcedimientosPorPersonal() {
+    const selectPersonal = document.getElementById('personal');
+    const selectedPersonalName = selectPersonal.value;
+    if (!selectedPersonalName) {
+      ocultarCamposProcedimiento();
+      return;
+    }
+    mostrarMensaje("Cargando opciones para " + selectedPersonalName + "...", "info");
+    google.script.run
+      .withSuccessHandler(function (tipoPersonal) {
+        const allFormGroups = document.querySelectorAll('.form-group[data-personal-type]');
+        allFormGroups.forEach(group => {
+          const groupType = group.getAttribute('data-personal-type');
+          const input = group.querySelector('input[type="number"]');
+          if (tipoPersonal === "Doctor") {
+            group.style.display = 'block';
+          } else if (tipoPersonal === "Anestesiólogo" || tipoPersonal === "Técnico") {
+            if (
+              (groupType === 'todos' && input && (
+                input.id === 'gastro_regular' ||
+                input.id === 'colono_regular' ||
+                input.id === 'gastocolono_regular' ||
+                input.id === 'recto_regular'
+              )) ||
+              (groupType === 'doctor' && input && (
+                input.id === 'asa_fria' ||
+                input.id === 'asa_fria2' ||
+                input.id === 'asa_caliente'
+              ))
+            ) {
+              group.style.display = 'block';
+            } else {
+              group.style.display = 'none';
+            }
+          } else {
+            group.style.display = 'none';
+          }
+        });
+        document.querySelectorAll('h3').forEach(h3 => {
+          const nextRow = h3.nextElementSibling;
+          if (nextRow && nextRow.classList.contains('form-row')) {
+            const visible = Array.from(nextRow.querySelectorAll('.form-group')).some(
+              fg => fg.style.display !== 'none'
+            );
+            h3.style.display = visible ? 'block' : 'none';
+          }
+        });
+        document.getElementById('formMessage').textContent = '';
+        document.getElementById('formMessage').className = 'message-area';
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensaje("Error al determinar el tipo de personal: " + error.message, "error");
+      })
+      .obtenerTipoDePersonal(selectedPersonalName);
+  }
+
+  // ====== Aplicar/quitar color según valor numérico ======
+  function aplicarColorProcedimiento(inputElement) {
+    const procedimientoId = inputElement.id;
+    const color = coloresProcedimientos[procedimientoId];
+    if (color) {
+      const value = parseFloat(inputElement.value);
+      if (!isNaN(value) && value > 0) {
+        inputElement.classList.add('input-procedimiento-activo');
+        inputElement.dataset.procedimientoColor = procedimientoId;
+      } else {
+        inputElement.classList.remove('input-procedimiento-activo');
+        delete inputElement.dataset.procedimientoColor;
+      }
+    }
+  }
+
+  // ====== Guardar registro de procedimiento ======
+  function guardarProcedimiento() {
+    // Recopilar datos del formulario
+    const data = {};
+    for (const id in mapeoCampos) {
+      const element = document.getElementById(id);
+      if (element) {
+        if (element.type === 'number') {
+          data[mapeoCampos[id]] = element.value ? parseInt(element.value, 10) : 0;
+        } else {
+          data[mapeoCampos[id]] = element.value;
+        }
+      }
+    }
+
+    // Validar que se haya seleccionado un personal
+    if (!data.personal) {
+      mostrarMensaje("Por favor, seleccione un personal.", "error");
+      return;
+    }
+
+    // Validar que al menos un procedimiento tenga un valor mayor que cero
+    let tieneProcedimientos = false;
+    for (const key in data) {
+      if (typeof data[key] === 'number' && data[key] > 0) {
+        tieneProcedimientos = true;
+        break;
+      }
+    }
+    if (!tieneProcedimientos) {
+      mostrarMensaje("Por favor, ingrese al menos un procedimiento.", "error");
+      return;
+    }
+
+    mostrarMensaje("Guardando registro...", "info");
+
+    google.script.run
+      .withSuccessHandler(function () {
+        mostrarMensaje("Registro guardado con éxito.", "success");
+        limpiarFormularioProcedimientos();
+        if (window.actualizarReporteProcedimientos) {
+          setTimeout(() => {
+            window.actualizarReporteProcedimientos();
+          }, 500);
+        }
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensaje("Error al guardar el registro: " + error.message, "error");
+        limpiarFormularioProcedimientos();
+      })
+      .guardarRegistroCompletoArriba(data);
+  }
+
+  // ====== Limpiar el formulario completamente ======
+  function limpiarFormularioProcedimientos() {
+    document.querySelectorAll('#registroProcedimientoForm input, #registroProcedimientoForm textarea').forEach(el => {
+      if (el.type === 'date') {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const day = today.getDate().toString().padStart(2, '0');
+        el.value = `${year}-${month}-${day}`;
+      } else {
+        el.value = '';
+      }
+      el.classList.remove('input-procedimiento-activo');
+      delete el.dataset.procedimientoColor;
+    });
+
+    // Reiniciar el select de personal
+    const selectPersonal = document.getElementById('personal');
+    if (selectPersonal) selectPersonal.value = '';
+
+    // Ocultar los campos dependientes del personal
+    if (typeof ocultarCamposProcedimiento === 'function') {
+      ocultarCamposProcedimiento();
+    }
+
+    // Poner el foco en la fecha
+    document.getElementById('fecha').focus();
+  }
+
+  // ====== Mostrar mensajes al usuario ======
+  function mostrarMensaje(mensaje, tipo) {
+    const mensajeDiv = document.getElementById('formMessage');
+    mensajeDiv.textContent = mensaje;
+    mensajeDiv.className = 'message-area ' + tipo;
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = 'message-area';
+      }, 5000);
+    }
+  }
+
+  // ====== Mantener color actualizado en inputs ======
+  function actualizarColorCampo(input) {
+    aplicarColorProcedimiento(input);
+  }
+</script>

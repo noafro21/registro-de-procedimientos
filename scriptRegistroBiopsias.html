@@ -1,0 +1,64 @@
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Establecer la fecha actual por defecto
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    document.getElementById('fecha_toma').value = `${yyyy}-${mm}-${dd}`;
+
+    // Cargar la lista de médicos (Gastroenterólogos de la Columna A)
+    google.script.run
+      .withSuccessHandler(function (medicosList) {
+        const select = document.getElementById('medico');
+        select.innerHTML = '<option disabled selected value="">Seleccione médico...</option>';
+        medicosList.forEach(nombre => {
+          const option = document.createElement('option');
+          option.value = nombre;
+          option.textContent = nombre;
+          select.appendChild(option);
+        });
+        // Asegurarse de que los campos numéricos estén vacíos al inicio o en 0
+        document.getElementById('frascos_gastro').value = "0";
+        document.getElementById('frascos_colon').value = "0";
+      })
+      .obtenerPersonalFiltrado([0]); // Columna A (índice 0) para Gastroenterólogos
+  });
+
+  function guardarBiopsia() {
+    // Recolecta los datos del formulario
+    const data = {
+      fecha_toma: document.getElementById('fecha_toma').value,
+      cedula: document.getElementById('cedula').value,
+      telefono: document.getElementById('telefono').value,
+      nombre_cliente: document.getElementById('nombre_cliente').value,
+      frascos_gastro: document.getElementById('frascos_gastro').value,
+      frascos_colon: document.getElementById('frascos_colon').value,
+      medico: document.getElementById('medico').value,
+      comentario: document.getElementById('comentario').value
+    };
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        document.getElementById('formMessage').textContent = '✅ Biopsia guardada correctamente.';
+        document.getElementById('registroBiopsiaForm').reset();
+      })
+      .withFailureHandler(function (error) {
+        document.getElementById('formMessage').textContent = '❌ Error al guardar la biopsia: ' + error.message;
+      })
+      .guardarRegistroBiopsia(data);
+  }
+
+  function mostrarMensaje(mensaje, tipo) {
+    const mensajeDiv = document.getElementById('formMessage');
+    mensajeDiv.textContent = mensaje;
+    mensajeDiv.className = 'message-area ' + tipo;
+
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = 'message-area';
+      }, 5000);
+    }
+  }
+</script>

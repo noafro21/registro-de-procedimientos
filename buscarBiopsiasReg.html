@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top">
+    <?!= include('stylesBuscarBiopsias'); ?>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Búsqueda y Reporte de Biopsias</h1>
+
+        <div class="search-section">
+            <h2>Buscar Biopsias</h2>
+            <div class="search-options">
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="searchType" value="fecha" id="radio_fecha" checked>Por Fecha
+                    </label>
+                    <label>
+                        <input type="radio" name="searchType" value="cedula" id="radio_cedula">
+                        Cédula
+                    </label>
+                    <label>
+                        <input type="radio" name="searchType" value="nombre" id="radio_nombre">
+                        Nombre
+                    </label>
+                </div>
+                <div class="search-inputs">
+                    <input type="date" id="search_fecha" class="search-input">
+                    <input type="text" id="search_cedula" class="search-input" placeholder="Ingrese número de cédula"
+                        disabled>
+                    <input type="text" id="search_nombre" class="search-input" placeholder="Ingrese nombre del cliente"
+                        disabled>
+                    <button id="btnBuscar" type="button">Buscar</button>
+                </div>
+            </div>
+            <div id="searchMessage" class="message-area"></div>
+        </div>
+
+        <div class="report-section">
+            <h2>Generar Reporte Mensual</h2>
+            <div class="report-options">
+                <div class="select-group">
+                    <label for="reportMes">Mes:</label>
+                    <select id="reportMes">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                    <label for="reportAnio">Año:</label>
+                    <select id="reportAnio">
+                        <option value="2023">2023</option>
+                        <option value="2024" selected>2024</option>
+                        <option value="2025">2025</option>
+                    </select>
+                    <button id="btnReporteMensual" class="btn-primary">Generar Reporte</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-section">
+            <h2 id="reportTitle">Resultados de la Búsqueda</h2>
+            <div id="resultado_busqueda" class="results-container"></div>
+            <div id="action-section" class="action-buttons">
+                <button id="btnDescargarPDF" class="btn-secondary">Descargar PDF</button>
+                <div id="emailMessage" class="message-area"></div>
+            </div>
+        </div>
+    </div>
+    <?!= include('scriptBuscarBiopsias'); ?>
+</body>
+
+</html>

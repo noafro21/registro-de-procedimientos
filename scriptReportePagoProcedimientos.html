@@ -1,0 +1,352 @@
+<script>
+  // ================== CARGA DE PERSONAL Y CONTROLES ==================
+  document.addEventListener('DOMContentLoaded', function () {
+    // Selecciona el mes actual por defecto
+    const mesInput = document.getElementById('mes');
+    if (mesInput) {
+      const mesActual = (new Date()).getMonth() + 1;
+      mesInput.value = mesActual.toString();
+    }
+
+    google.script.run
+      .withSuccessHandler(function (personalList) {
+        const selectDoctor = document.getElementById('doctor');
+        selectDoctor.innerHTML = '<option disabled selected value="">Seleccione un nombre</option>';
+        personalList.forEach(function (nombre) {
+          const option = document.createElement('option');
+          option.value = nombre;
+          option.textContent = nombre;
+          selectDoctor.appendChild(option);
+        });
+      })
+      .obtenerPersonalFiltrado([0, 1, 2]);
+  });
+
+  function cargarEmailPersonal() {
+    const selectedPersonal = document.getElementById('doctor').value;
+    google.script.run
+      .withSuccessHandler(function (email) {
+        document.getElementById('emailRecipient').value = email;
+      })
+      .obtenerEmailParaPersonal(selectedPersonal);
+  }
+
+  // ================== GENERACIÓN DE TABLAS Y REPORTE ==================
+  function generarTablaHtml(titulo, data, totalSubtotalDia, totalIVADia, totalConIVADia) {
+    let html = `
+      <h3>${titulo}</h3>
+      <table>
+        <tr>
+          <th>Tipo de procedimiento</th>
+          <th>Cantidad</th>
+          <th>Costo por procedimiento individual</th>
+          <th>Ganancia sin IVA</th>
+          <th>IVA (4%)</th>
+          <th>Ganancia con IVA</th>
+        </tr>
+    `;
+
+    let hasData = false;
+    for (const key in data) {
+      const r = data[key];
+      if (r.cantidad > 0) {
+        hasData = true;
+        html += `
+          <tr>
+            <td class="text-left">${r.nombre}</td>
+            <td>${r.cantidad}</td>
+            <td>₡${r.costo_unitario.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>₡${r.subtotal.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>₡${r.iva.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            <td>₡${r.total_con_iva.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          </tr>
+        `;
+      }
+    }
+
+    if (!hasData) {
+      html += `<tr><td colspan="6">No hay registros para este período.</td></tr>`;
+    } else {
+      html += `
+        <tr class="subtotal-row">
+          <td class="text-left">Subtotal ${titulo}</td>
+          <td>-</td>
+          <td>-</td>
+          <td>₡${totalSubtotalDia.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td>₡${totalIVADia.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <td>₡${totalConIVADia.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        </tr>
+      `;
+    }
+    html += '</table>';
+    return html;
+  }
+
+  function calcular() {
+    const doctor = document.getElementById('doctor').value;
+    const mes = document.getElementById('mes').value;
+    const anio = document.getElementById('anio').value;
+    const quincena = document.getElementById('quincena').value;
+
+    if (!doctor) {
+      mostrarMensaje("Seleccione un personal.", "error");
+      return;
+    }
+
+    google.script.run.withSuccessHandler(function (resumen) {
+      const divResultado = document.getElementById('resultado');
+      let htmlResultado = '';
+
+      // Asegura que ambos objetos existan aunque estén vacíos
+      const resumenLV = resumen.lv || {};
+      const resumenSab = resumen.sab || {};
+
+      let totalSubtotalLV = 0;
+      let totalIVALV = 0;
+      let totalConIVALV = 0;
+      for (const key in resumenLV) {
+        totalSubtotalLV += resumenLV[key].subtotal;
+        totalIVALV += resumenLV[key].iva;
+        totalConIVALV += resumenLV[key].total_con_iva;
+      }
+
+      let totalSubtotalSab = 0;
+      let totalIVASab = 0;
+      let totalConIVASab = 0;
+      for (const key in resumenSab) {
+        totalSubtotalSab += resumenSab[key].subtotal;
+        totalIVASab += resumenSab[key].iva;
+        totalConIVASab += resumenSab[key].total_con_iva;
+      }
+
+      htmlResultado += generarTablaHtml("Reporte de Lunes a Viernes", resumenLV, totalSubtotalLV, totalIVALV, totalConIVALV);
+      htmlResultado += generarTablaHtml("Reporte de Sábados", resumenSab, totalSubtotalSab, totalIVASab, totalConIVASab);
+
+      divResultado.innerHTML = htmlResultado;
+
+      // ACTUALIZA LOS TOTALES PARA EL DESCUENTO
+      mostrarTotalesReporte(resumen.totales.subtotal, resumen.totales.total_con_iva);
+
+      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      const selectedMonthName = monthNames[parseInt(mes) - 1];
+      const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+
+      document.getElementById('reportTitle').textContent = `Reporte de Procedimientos y Consultas - ${doctor} - ${selectedMonthName} ${anio} (${quincenaText})`;
+
+      document.getElementById('action-section').style.display = 'block';
+      document.getElementById('emailMessage').textContent = '';
+    }).calcularCostos(doctor, mes, anio, quincena);
+  }
+
+  // ================== DESCUENTO, EXTRA Y MOTIVO ==================
+  let subtotalGlobal = 0;
+  let totalConIVAGlobal = 0;
+
+  function mostrarTotalesReporte(sub, total) {
+    subtotalGlobal = sub;
+    totalConIVAGlobal = total;
+    if (document.getElementById('subtotalOriginal')) document.getElementById('subtotalOriginal').textContent = subtotalGlobal.toLocaleString('es-CR');
+    if (document.getElementById('granTotal')) document.getElementById('granTotal').textContent = totalConIVAGlobal.toLocaleString('es-CR');
+    actualizarDescuentoYExtra();
+  }
+
+  function actualizarDescuentoYExtra() {
+    const montoDescontarInput = document.getElementById('montoDescontar');
+    const motivoDescuentoInput = document.getElementById('motivoDescuento');
+    const montoExtraInput = document.getElementById('montoExtra');
+    if (!montoDescontarInput || !motivoDescuentoInput || !montoExtraInput) return;
+
+    const montoDescontar = Number(montoDescontarInput.value) || 0;
+    const montoExtra = Number(montoExtraInput.value) || 0;
+    const motivo = motivoDescuentoInput.value.trim();
+
+    // Subtotal con descuento y extra
+    const subtotalConDescuento = subtotalGlobal - montoDescontar + montoExtra;
+    if (document.getElementById('subtotalConDescuento')) document.getElementById('subtotalConDescuento').textContent = subtotalConDescuento.toLocaleString('es-CR');
+
+    // Comentario
+    let comentario = '';
+    if (montoDescontar > 0 && motivo) {
+      comentario += `Descuento aplicado: ₡${montoDescontar.toLocaleString('es-CR')} (${motivo})`;
+    } else if (montoDescontar > 0) {
+      comentario += `Descuento aplicado: ₡${montoDescontar.toLocaleString('es-CR')}`;
+    }
+    if (montoExtra > 0 && motivo) {
+      comentario += (comentario ? ' | ' : '') + `Extra aplicado: ₡${montoExtra.toLocaleString('es-CR')} (${motivo})`;
+    } else if (montoExtra > 0) {
+      comentario += (comentario ? ' | ' : '') + `Extra aplicado: ₡${montoExtra.toLocaleString('es-CR')}`;
+    }
+    document.getElementById('comentarioDescuento').textContent = comentario;
+
+    // El gran total también refleja el descuento y el extra
+    if (document.getElementById('granTotal')) document.getElementById('granTotal').textContent = (totalConIVAGlobal - montoDescontar + montoExtra).toLocaleString('es-CR');
+
+    // Actualiza los spans para PDF
+    if (document.getElementById('montoDescontarTexto')) document.getElementById('montoDescontarTexto').textContent = montoDescontar > 0 ? `Descuento aplicado: ₡${montoDescontar.toLocaleString('es-CR')}` : '';
+    if (document.getElementById('montoExtraTexto')) document.getElementById('montoExtraTexto').textContent = montoExtra > 0 ? `Extra aplicado: ₡${montoExtra.toLocaleString('es-CR')}` : '';
+    if (document.getElementById('motivoDescuentoTexto')) document.getElementById('motivoDescuentoTexto').textContent = motivo ? `Motivo: ${motivo}` : '';
+  }
+
+  // Eventos para recalcular al cambiar descuento, extra o motivo
+  document.addEventListener('DOMContentLoaded', function () {
+    ['montoDescontar', 'motivoDescuento', 'montoExtra'].forEach(function (id) {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', actualizarDescuentoYExtra);
+    });
+  });
+
+  // ================== ENVÍO Y DESCARGA DE PDF ==================
+  function enviarReporteCostos() {
+    prepararParaPDF();
+    const emailRecipient = document.getElementById('emailRecipient').value;
+    const doctor = document.getElementById('doctor').value;
+    const mes = document.getElementById('mes').value;
+    const anio = parseInt(document.getElementById('anio').value);
+    const quincena = document.getElementById('quincena').value;
+
+    if (!emailRecipient || !emailRecipient.includes('@')) {
+      mostrarEmailMensaje("Por favor, ingrese un email válido.", "error");
+      restaurarInputsPDF();
+      return;
+    }
+
+    const reportContent = document.getElementById('printableReportContent').innerHTML;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const selectedMonthName = monthNames[parseInt(mes) - 1];
+    const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+    const subject = `Reporte de Procedimientos y Consultas - ${doctor} - ${selectedMonthName} ${anio} (${quincenaText})`;
+    const fileName = `Reporte_Procedimientos_y_Consultas_${doctor.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+
+    mostrarEmailMensaje("Enviando reporte...", "info");
+
+    google.script.run
+      .withSuccessHandler(response => {
+        restaurarInputsPDF();
+        if (response.success) {
+          mostrarEmailMensaje(response.message, "success");
+        } else {
+          mostrarEmailMensaje(response.message, "error");
+        }
+      })
+      .withFailureHandler(error => {
+        restaurarInputsPDF();
+        mostrarMensaje("❌ Error al enviar el reporte: " + error.message, "error");
+      })
+      .enviarReportePDF(reportContent, emailRecipient, subject, fileName);
+  }
+
+  function descargarReporteCostosPDF() {
+    prepararParaPDF();
+    const reportContent = document.getElementById('printableReportContent').innerHTML;
+
+    const doctor = document.getElementById('doctor').value;
+    const mes = document.getElementById('mes').value;
+    const anio = parseInt(document.getElementById('anio').value);
+    const quincena = document.getElementById('quincena').value;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const selectedMonthName = monthNames[parseInt(mes) - 1];
+    const fileName = `Reporte_Procedimientos_y_Consultas_${doctor.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+    const pageTitle = `Reporte de Procedimientos y Consultas - ${doctor} - ${selectedMonthName} ${anio}`;
+
+    mostrarEmailMensaje("Generando PDF para descarga...", "info");
+
+    google.script.run
+      .withSuccessHandler(function (base64Pdf) {
+        restaurarInputsPDF();
+        if (base64Pdf) {
+          const blob = b64toBlob(base64Pdf, 'application/pdf');
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          mostrarEmailMensaje("✅ Reporte descargado con éxito.", "success");
+        } else {
+          mostrarMensaje("❌ No se pudo generar el PDF para descarga.", "error");
+        }
+      })
+      .withFailureHandler(function (error) {
+        restaurarInputsPDF();
+        mostrarMensaje("❌ Error al descargar el PDF: " + error.message, "error");
+      })
+      .generarPdfParaDescarga(reportContent, fileName, 'stylesReportePagoProcedimientos', pageTitle);
+  }
+
+  function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+    const byteCharacters = atob(b64Data);
+    const byteArrays = [];
+
+    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+      const slice = byteCharacters.slice(offset, offset + sliceSize);
+      const byteNumbers = new Array(slice.length);
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+
+    const blob = new Blob(byteArrays, { type: contentType });
+    return blob;
+  }
+
+  // ================== MENSAJES ==================
+  function mostrarEmailMensaje(mensaje, tipo) {
+    let mensajeDiv = document.getElementById('emailMessage');
+    if (!mensajeDiv) {
+      mensajeDiv = document.createElement('div');
+      mensajeDiv.id = 'emailMessage';
+      document.getElementById('action-section').appendChild(mensajeDiv);
+    }
+    mensajeDiv.className = '';
+    mensajeDiv.textContent = mensaje;
+    if (tipo === 'success') {
+      mensajeDiv.classList.add('alert-success');
+    } else if (tipo === 'error') {
+      mensajeDiv.classList.add('alert-error');
+    } else if (tipo === 'info') {
+      mensajeDiv.classList.add('alert-info');
+    }
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = '';
+      }, 5000);
+    }
+  }
+
+  function mostrarMensaje(mensaje, tipo) {
+    let mensajeDiv = document.getElementById('formMessage') || document.getElementById('emailMessage');
+    if (!mensajeDiv) {
+      mensajeDiv = document.createElement('div');
+      mensajeDiv.id = 'formMessage';
+      const controlsDiv = document.getElementById('reportControls');
+      if (controlsDiv) {
+        controlsDiv.prepend(mensajeDiv);
+      } else {
+        document.body.prepend(mensajeDiv);
+      }
+    }
+    mensajeDiv.className = '';
+    mensajeDiv.textContent = mensaje;
+    if (tipo === 'success') {
+      mensajeDiv.classList.add('alert-success');
+    } else if (tipo === 'error') {
+      mensajeDiv.classList.add('alert-error');
+    } else if (tipo === 'info') {
+      mensajeDiv.classList.add('alert-info');
+    }
+    if (tipo !== 'error') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = '';
+      }, 3000);
+    }
+  }
+
+  function prepararParaPDF() { }
+  function restaurarInputsPDF() { }
+</script>

@@ -1,0 +1,160 @@
+<!-- filepath: c:\Users\adonf\Desktop\Registro de procedimientos\stylesHorasExtras.html -->
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f7f6;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+
+  form {
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  h2 {
+    color: #273F4F;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8em;
+    font-weight: 600;
+  }
+
+  label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #555;
+    display: block;
+  }
+
+  input[type="date"],
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1em;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+  }
+
+  input[type="date"]:focus,
+  input[type="number"]:focus,
+  select:focus {
+    border-color: #273F4F;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(39, 63, 79, 0.2);
+  }
+
+  input[type="submit"] {
+    background-color: #273F4F;
+    color: white;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    margin-top: 10px;
+  }
+
+  input[type="submit"]:hover {
+    background-color: #FE7743;
+  }
+
+  .alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .alert-info {
+    color: #273F4F;
+    background-color: #e9f0f5;
+    border: 1px solid #c5d5e5;
+    padding: 10px;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    body {
+      padding: 15px;
+    }
+
+    form {
+      padding: 20px;
+      max-width: 100%;
+    }
+
+    h2 {
+      font-size: 1.5em;
+    }
+
+    input[type="submit"] {
+      padding: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    body {
+      padding: 10px;
+    }
+
+    form {
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    h2 {
+      font-size: 1.3em;
+      margin-bottom: 15px;
+    }
+
+    input[type="date"],
+    input[type="number"],
+    select,
+    input[type="submit"] {
+      padding: 10px;
+      font-size: 0.9em;
+    }
+
+    .alert-success,
+    .alert-error,
+    .alert-info {
+      padding: 10px;
+      font-size: 0.9em;
+    }
+  }
+</style>

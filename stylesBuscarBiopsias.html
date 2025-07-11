@@ -1,0 +1,177 @@
+<style>
+    /* Estilos generales */
+    body {
+        font-family: Arial, sans-serif;
+        background: #f7f7f7;
+        color: #273F4F;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        max-width: 900px;
+        margin: 30px auto;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.10);
+        padding: 32px 24px;
+    }
+
+    h1 {
+        text-align: center;
+        color: #273F4F;
+        margin-bottom: 30px;
+    }
+
+    h2 {
+        color: #FE7743;
+        margin-top: 24px;
+        margin-bottom: 18px;
+        font-size: 22px;
+        border-bottom: 2px solid #273F4F;
+        padding-bottom: 6px;
+    }
+
+    label {
+        font-weight: bold;
+        color: #273F4F;
+        margin-bottom: 6px;
+        display: block;
+    }
+
+    .search-section,
+    .report-section,
+    .results-section {
+        margin-bottom: 32px;
+    }
+
+    .radio-group {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 18px;
+    }
+
+    .radio-group label {
+        font-weight: normal;
+        color: #273F4F;
+        margin-bottom: 0;
+    }
+
+    .search-inputs {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .search-input {
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 15px;
+        min-width: 180px;
+        background: #fff;
+        color: #273F4F;
+    }
+
+    button,
+    .btn-primary,
+    .btn-secondary {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 4px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-right: 8px;
+    }
+
+    button,
+    .btn-primary {
+        background: #FE7743;
+        color: #fff;
+    }
+
+    .btn-secondary {
+        background: #273F4F;
+        color: #fff;
+    }
+
+    button:hover,
+    .btn-primary:hover,
+    .btn-secondary:hover {
+        opacity: 0.9;
+    }
+
+    .select-group {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .select-group label {
+        margin-bottom: 0;
+    }
+
+    .select-group select {
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 15px;
+        background: #fff;
+        color: #273F4F;
+    }
+
+    .results-section {
+        margin-top: 36px;
+    }
+
+    .results-container {
+        margin-top: 18px;
+        min-height: 60px;
+        background: #fafafa;
+        border-radius: 6px;
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+    }
+
+    .action-buttons {
+        margin-top: 18px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .message-area {
+        margin-top: 10px;
+        color: #FE7743;
+        font-weight: bold;
+        font-size: 15px;
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+        .container {
+            padding: 12px 4px;
+        }
+
+        .search-inputs,
+        .select-group,
+        .action-buttons {
+            flex-direction: column;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        h1 {
+            font-size: 22px;
+        }
+
+        h2 {
+            font-size: 18px;
+        }
+    }
+</style>

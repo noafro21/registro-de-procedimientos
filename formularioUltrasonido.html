@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <base target="_top" />
+    <?!= include('stylesBotonRegresar'); ?>
+    <?!= include('stylesFormularioUltrasonido'); ?>
+</head>
+
+<body>
+    <!-- Botón para volver al menú principal -->
+    <button class="back-button" onclick="volverAlMenu()" title="Volver al Menú Principal">
+        <span class="back-button-icon">←</span>
+    </button>
+
+    <form id="registroUltrasonidoForm" onsubmit="guardarUltrasonido(); return false;">
+        <h2>Registro de Ultrasonidos</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="fecha_ultrasonido">Fecha:</label>
+                <input type="date" id="fecha_ultrasonido" required />
+            </div>
+            <div class="form-group">
+                <label for="radiologo">Radiólogo:</label>
+                <select id="radiologo">
+                    <option disabled selected value="">Cargando radiólogos...</option>
+                </select>
+            </div>
+        </div>
+
+        <h2>Ultrasonidos</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="abdomen_completo">Abdomen Completo:</label>
+                <input type="number" id="abdomen_completo" min="0" />
+            </div>
+            <div class="form-group">
+                <label for="abdomen_superior">Abdomen Superior:</label>
+                <input type="number" id="abdomen_superior" min="0" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="mama">Mama:</label>
+                <input type="number" id="mama" min="0" />
+            </div>
+            <div class="form-group">
+                <label for="testiculos">Testículos:</label>
+                <input type="number" id="testiculos" min="0" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tracto_urinario">Tracto Urinario:</label>
+                <input type="number" id="tracto_urinario" min="0" />
+            </div>
+            <div class="form-group">
+                <label for="tejidos_blandos">Tejidos Blandos:</label>
+                <input type="number" id="tejidos_blandos" min="0" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="tiroides">Tiroides:</label>
+                <input type="number" id="tiroides" min="0" />
+            </div>
+            <div class="form-group">
+                <label for="articular">Articular:</label>
+                <input type="number" id="articular" min="0" />
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="pelvico">Pélvico:</label>
+                <input type="number" id="pelvico" min="0" />
+            </div>
+            <div class="form-group">
+                <label for="doppler">Doppler:</label>
+                <input type="number" id="doppler" min="0" />
+            </div>
+        </div>
+        <input type="submit" value="Guardar Registro" />
+    </form>
+
+    <?!= include('scriptUltrasonido'); ?>
+    <?!= include('scriptBotonRegresar'); ?>
+</body>
+
+</html>

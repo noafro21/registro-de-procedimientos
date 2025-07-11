@@ -1,0 +1,226 @@
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #EFEEEA;
+    color: #273F4F;
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #FFFFFF;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  }
+
+  h2 {
+    color: #273F4F;
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 24px;
+    border-bottom: 2px solid #FE7743;
+    padding-bottom: 10px;
+  }
+
+  h3 {
+    color: #273F4F;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    font-size: 18px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 5px;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+
+  .form-group {
+    flex: 1 1 45%;
+    min-width: 180px;
+    margin-bottom: 0;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #273F4F;
+  }
+
+  input[type="date"],
+  input[type="number"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    box-sizing: border-box;
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .submit-button {
+    background-color: #273F4F;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    width: 100%;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+  }
+
+  .submit-button:hover {
+    background-color: #FE7743;
+  }
+
+  .message-area {
+    margin-top: 15px;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+  }
+
+  .message-area.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+
+  .message-area.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
+
+  .message-area.info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+  }
+
+  /* Ejemplo de estilos para los inputs activos según el procedimiento */
+  .input-procedimiento-activo[data-procedimiento-color="consulta_regular"],
+  .input-procedimiento-activo[data-procedimiento-color="consulta_medismart"],
+  .input-procedimiento-activo[data-procedimiento-color="consulta_higado"],
+  .input-procedimiento-activo[data-procedimiento-color="consulta_pylori"] {
+    background-color: #a637f0;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .input-procedimiento-activo[data-procedimiento-color="gastro_regular"],
+  .input-procedimiento-activo[data-procedimiento-color="gastro_medismart"] {
+    background-color: #6aa84f;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .input-procedimiento-activo[data-procedimiento-color="colono_regular"],
+  .input-procedimiento-activo[data-procedimiento-color="colono_medismart"] {
+    background-color: #f8f87d;
+    color: #273F4F;
+    font-weight: bold;
+  }
+
+  .input-procedimiento-activo[data-procedimiento-color="gastocolono_regular"],
+  .input-procedimiento-activo[data-procedimiento-color="gastocolono_medismart"] {
+    background-color: #351c75;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .input-procedimiento-activo[data-procedimiento-color="recto_regular"],
+  .input-procedimiento-activo[data-procedimiento-color="recto_medismart"] {
+    background-color: #ff9900;
+    color: #fff;
+    font-weight: bold;
+  }
+
+  .input-procedimiento-activo[data-procedimiento-color="asa_fria"],
+  .input-procedimiento-activo[data-procedimiento-color="asa_fria2"],
+  .input-procedimiento-activo[data-procedimiento-color="asa_caliente"] {
+    background-color: #cccccc;
+    color: #273F4F;
+    font-weight: bold;
+  }
+
+  .input-procedimiento-activo[data-procedimiento-color="dictamen"] {
+    background-color: #9fc5e8;
+    color: #273F4F;
+    font-weight: bold;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 900px) {
+    .container {
+      padding: 20px;
+    }
+
+    .form-group {
+      min-width: 140px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .container {
+      padding: 15px;
+    }
+
+    h2 {
+      font-size: 20px;
+    }
+
+    .form-row {
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .form-group {
+      min-width: 100px;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    input[type="date"],
+    input[type="number"],
+    select,
+    textarea,
+    .submit-button {
+      font-size: 14px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    body {
+      padding: 5px;
+    }
+
+    .container {
+      padding: 8px;
+    }
+
+    h2 {
+      font-size: 18px;
+    }
+
+    h3 {
+      font-size: 16px;
+    }
+  }
+</style>

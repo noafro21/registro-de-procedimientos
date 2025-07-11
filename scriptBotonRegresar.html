@@ -1,0 +1,41 @@
+<script>
+  /**
+   * Función para volver al menú principal
+   */
+  function volverAlMenu() {
+    console.log("Volviendo al menú principal...");
+
+    // Mostrar mensaje de carga
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading-overlay';
+    loadingDiv.innerHTML = '<div class="loading-message"><h3>Volviendo al menú principal...</h3></div>';
+    document.body.appendChild(loadingDiv);
+
+    // Determinar si estamos en el entorno de desarrollo (userCodeAppPanel) o en la versión implementada
+    const isDevEnvironment = window.location.href.includes('userCodeAppPanel');
+
+    if (isDevEnvironment) {
+      console.log('DEBUG (Client): Detectado entorno de desarrollo, usando google.script.run para navegar');
+
+      // Redirigir al menú principal usando getPageHtml
+      google.script.run
+        .withSuccessHandler(function (html) {
+          // Reemplazar todo el contenido del documento con el nuevo HTML
+          document.open();
+          document.write(html);
+          document.close();
+        })
+        .withFailureHandler(function (error) {
+          // Mostrar mensaje de error
+          alert('Error al volver al menú principal: ' + error.message);
+          // Eliminar el mensaje de carga
+          document.body.removeChild(loadingDiv);
+        })
+        .getPageHtml('mainMenu');
+    } else {
+      // En la versión implementada, usamos la redirección normal
+      const baseUrl = window.location.origin + window.location.pathname;
+      window.top.location.href = baseUrl; // Sin parámetros para cargar el menú principal
+    }
+  }
+</script>
