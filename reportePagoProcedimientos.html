@@ -15,44 +15,74 @@
 
     <div id="reportControls">
         <h2>Reporte de Procedimiento</h2>
+        
+        <!-- ✅ MENSAJE DE STATUS DINÁMICO -->
+        <div id="formMessage" class="message-container"></div>
+        
         <label for="doctor">Seleccione personal:</label>
         <select id="doctor">
             <option disabled selected value="">Cargando personal...</option>
         </select>
+        <button type="button" onclick="cargarEmailPersonal()" class="btn-small">📧 Cargar Email</button>
 
+        <!-- ✅ SELECTORES MEJORADOS - Se inicializarán dinámicamente -->
         <label for="mes">Mes:</label>
         <select id="mes">
-            <option value="1">Enero</option>
-            <option value="2">Febrero</option>
-            <option value="3">Marzo</option>
-            <option value="4">Abril</option>
-            <option value="5">Mayo</option>
-            <option value="6">Junio</option>
-            <option value="7">Julio</option>
-            <option value="8">Agosto</option>
-            <option value="9">Septiembre</option>
-            <option value="10">Octubre</option>
-            <option value="11">Noviembre</option>
-            <option value="12">Diciembre</option>
+            <option disabled value="">Seleccione un mes</option>
+            <!-- Se llenarán dinámicamente -->
         </select>
 
         <label for="anio">Año:</label>
         <select id="anio">
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-            <option value="2023">2023</option>
+            <option disabled value="">Seleccione un año</option>
+            <!-- Se llenarán dinámicamente -->
         </select>
 
         <label for="quincena">Quincena:</label>
         <select id="quincena">
-            <option value="completo">Mes Completo</option>
-            <option value="1-15">1 al 15</option>
-            <option value="16-31">16 al 31</option>
+            <option disabled value="">Seleccione una quincena</option>
+            <!-- Se llenarán dinámicamente -->
         </select>
 
-        <button type="button" onclick="calcular()">Calcular</button>
+        <!-- ✅ BOTONES DE ACCIÓN MEJORADOS -->
+        <div class="action-buttons">
+            <button type="button" onclick="calcular()" class="btn-primary">📊 Calcular Reporte</button>
+            <button type="button" onclick="actualizarSelectoresFecha()" class="btn-secondary">🔄 Actualizar Fechas</button>
+            <button type="button" onclick="mostrarAyudaFechas()" class="btn-help">❓ Ayuda Fechas</button>
+        </div>
+        
+        <!-- ✅ INFORMACIÓN DE SELECCIÓN ACTUAL -->
+        <div id="seleccionActual" class="selection-info">
+            <small>📅 Selección actual: <span id="descripcionSeleccion">Ninguna</span></small>
+        </div>
+        
+        <!-- ✅ HERRAMIENTAS DE DEBUGGING EXPANDIDAS -->
+        <details class="debug-tools">
+            <summary class="debug-summary">🔧 Herramientas de Debugging</summary>
+            <div class="debug-buttons-grid">
+                <button type="button" onclick="diagnosticarCalculo()" class="debug-btn debug-btn-primary">
+                    🔬 Diagnosticar Cálculo
+                </button>
+                <button type="button" onclick="buscarPersonalPorNombre()" class="debug-btn debug-btn-purple">
+                    🔎 Buscar Personal
+                </button>
+                <button type="button" onclick="verificarDatosPersonal()" class="debug-btn debug-btn-blue">
+                    📊 Verificar Datos
+                </button>
+                <button type="button" onclick="listarPersonalDisponible()" class="debug-btn debug-btn-green">
+                    👥 Listar Personal
+                </button>
+                <button type="button" onclick="validarSeleccionFecha()" class="debug-btn debug-btn-yellow">
+                    ✅ Validar Fechas
+                </button>
+                <button type="button" onclick="mostrarLogConsola()" class="debug-btn debug-btn-gray">
+                    📋 Ver Logs
+                </button>
+            </div>
+        </details>
     </div>
 
+    <!-- ✅ ÁREA DE RESULTADOS MEJORADA -->
     <div id="printableReportContent">
         <h2 id="reportTitle"></h2>
         <div id="resultado"></div>
@@ -61,53 +91,68 @@
             <table class="totales-table">
                 <tr>
                     <td class="label-td">Subtotal original:</td>
-                    <td class="value-td"><span id="subtotalOriginal"></span></td>
+                    <td class="value-td">₡<span id="subtotalOriginal">0.00</span></td>
                 </tr>
                 <tr class="solo-pantalla">
                     <td class="label-td">Descuento aplicado:</td>
                     <td class="value-td">
-                        <input type="number" id="montoDescontar" min="0" placeholder="Monto a descontar">
+                        <input type="number" id="montoDescontar" min="0" step="0.01" placeholder="0.00">
                         <span id="montoDescontarTexto"></span>
                     </td>
                 </tr>
                 <tr class="solo-pantalla">
                     <td class="label-td">Extra (₡):</td>
                     <td class="value-td">
-                        <input type="number" id="montoExtra" min="0" step="0.01" value="0">
+                        <input type="number" id="montoExtra" min="0" step="0.01" value="0" placeholder="0.00">
                         <span id="montoExtraTexto"></span>
                     </td>
                 </tr>
                 <tr class="solo-pantalla">
-                    <td class="label-td">Motivo del descuento o extra:</td>
+                    <td class="label-td">Motivo:</td>
                     <td class="value-td">
-                        <input type="text" id="motivoDescuento" placeholder="Motivo del descuento">
+                        <input type="text" id="motivoDescuento" placeholder="Motivo del descuento o extra" maxlength="100">
                         <span id="motivoDescuentoTexto"></span>
                     </td>
                 </tr>
                 <tr>
-                    <td class="label-td">Subtotal con descuento:</td>
-                    <td class="value-td"><span id="subtotalConDescuento"></span></td>
+                    <td class="label-td">Subtotal con ajustes:</td>
+                    <td class="value-td">₡<span id="subtotalConDescuento">0.00</span></td>
                 </tr>
                 <tr class="grand-total-row">
-                    <td>GRAN TOTAL:</td>
-                    <td><span id="granTotal"></span></td>
+                    <td><strong>GRAN TOTAL:</strong></td>
+                    <td><strong>₡<span id="granTotal">0.00</span></strong></td>
                 </tr>
             </table>
-            <div id="comentarioDescuento"></div>
+            <div id="comentarioDescuento" class="comment-section"></div>
         </div>
     </div>
 
-    <div id="action-section">
-        <h3>Opciones de Reporte</h3>
-        <label for="emailRecipient">Email Destinatario:</label>
-        <input type="email" id="emailRecipient" placeholder="ejemplo@dominio.com" required />
-        <button onclick="enviarReporteCostos()">Enviar Reporte</button>
-        <button onclick="descargarReporteCostosPDF()">Descargar PDF</button>
-        <div id="emailMessage"></div>
+    <!-- ✅ SECCIÓN DE ACCIONES MEJORADA -->
+    <div id="action-section" style="display: none;">
+        <h3>📧 Opciones de Reporte</h3>
+        <div class="email-section">
+            <label for="emailRecipient">Email Destinatario:</label>
+            <input type="email" id="emailRecipient" placeholder="ejemplo@dominio.com" required />
+            <div class="action-buttons">
+                <button onclick="enviarReporteCostos()" class="btn-primary">📧 Enviar Reporte</button>
+                <button onclick="descargarReporteCostosPDF()" class="btn-secondary">💾 Descargar PDF</button>
+            </div>
+        </div>
+        <div id="emailMessage" class="message-container"></div>
+    </div>
+
+    <!-- ✅ ÁREA DE AYUDA Y ESTADO -->
+    <div id="statusArea" class="status-area">
+        <div id="loadingIndicator" class="loading-indicator" style="display: none;">
+            <div class="spinner"></div>
+            <span>Procesando...</span>
+        </div>
     </div>
 
     <?!= include('scriptReportePagoProcedimientos'); ?>
     <?!= include('scriptBotonRegresar'); ?>
+    <?!= include('scriptReportePagoProcedimientosUI'); ?>
+
 </body>
 
 </html>
