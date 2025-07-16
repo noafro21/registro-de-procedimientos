@@ -2840,135 +2840,12 @@ function obtenerDoctores() {
 }
 
 /**
- * FUNCIONES GENÉRICAS PARA TODOS LOS TIPOS DE PERSONAL
+ * NUEVAS FUNCIONES DE CÁLCULO SEPARADO POR TIPO DE PERSONAL
  */
 
 /**
- * Función para obtener todos los anestesiólogos de la columna 1
+ * Función para calcular costos solo de Gastroenterólogos
  */
-function obtenerTodosLosAnestesiologos() {
-  try {
-    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Personal");
-    if (!hoja) {
-      throw new Error("❌ La hoja 'Personal' no existe.");
-    }
-
-    const datos = hoja.getDataRange().getValues();
-    const anestesiologos = new Set();
-
-    // Columna 1 (B) = Anestesiólogos
-    for (let i = 1; i < datos.length; i++) {
-      const nombre = datos[i][1]; // Columna B
-      if (nombre && typeof nombre === "string" && nombre.trim()) {
-        anestesiologos.add(nombre.trim());
-      }
-    }
-
-    const resultado = [...anestesiologos].sort();
-    Logger.log("🩺 Anestesiólogos encontrados: " + resultado.join(", "));
-    return resultado;
-  } catch (error) {
-    Logger.log("ERROR en obtenerTodosLosAnestesiologos: " + error.message);
-    return [];
-  }
-}
-
-/**
- * Función para obtener todos los gastroenterólogos de la columna 0
- */
-function obtenerTodosLosGastroenterologos() {
-  try {
-    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Personal");
-    if (!hoja) {
-      throw new Error("❌ La hoja 'Personal' no existe.");
-    }
-
-    const datos = hoja.getDataRange().getValues();
-    const gastroenterologos = new Set();
-
-    // Columna 0 (A) = Gastroenterólogos
-    for (let i = 1; i < datos.length; i++) {
-      const nombre = datos[i][0]; // Columna A
-      if (nombre && typeof nombre === "string" && nombre.trim()) {
-        gastroenterologos.add(nombre.trim());
-      }
-    }
-
-    const resultado = [...gastroenterologos].sort();
-    Logger.log("🏥 Gastroenterólogos encontrados: " + resultado.join(", "));
-    return resultado;
-  } catch (error) {
-    Logger.log("ERROR en obtenerTodosLosGastroenterologos: " + error.message);
-    return [];
-  }
-}
-
-/**
- * Función para obtener todos los técnicos de la columna 2
- */
-function obtenerTodosLosTecnicos() {
-  try {
-    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Personal");
-    if (!hoja) {
-      throw new Error("❌ La hoja 'Personal' no existe.");
-    }
-
-    const datos = hoja.getDataRange().getValues();
-    const tecnicos = new Set();
-
-    // Columna 2 (C) = Técnicos
-    for (let i = 1; i < datos.length; i++) {
-      const nombre = datos[i][2]; // Columna C
-      if (nombre && typeof nombre === "string" && nombre.trim()) {
-        tecnicos.add(nombre.trim());
-      }
-    }
-
-    const resultado = [...tecnicos].sort();
-    Logger.log("🔧 Técnicos encontrados: " + resultado.join(", "));
-    return resultado;
-  } catch (error) {
-    Logger.log("ERROR en obtenerTodosLosTecnicos: " + error.message);
-    return [];
-  }
-}
-
-/**
- * Función para validar que un nombre existe en la columna correcta
- */
-function validarPersonalEnColumnaCorrecta(personalSeleccionado, tipoEsperado) {
-  let listaCorrecta = [];
-  
-  switch (tipoEsperado) {
-    case "Gastroenterólogo":
-      listaCorrecta = obtenerTodosLosGastroenterologos();
-      break;
-    case "Anestesiólogo":
-      listaCorrecta = obtenerTodosLosAnestesiologos();
-      break;
-    case "Técnico":
-      listaCorrecta = obtenerTodosLosTecnicos();
-      break;
-    default:
-      Logger.log(`❌ Tipo de personal no reconocido: ${tipoEsperado}`);
-      return false;
-  }
-  
-  // Buscar coincidencia exacta (normalizada)
-  const nombreNormalizado = normalizarNombre(personalSeleccionado);
-  const encontrado = listaCorrecta.some(nombre => 
-    normalizarNombre(nombre) === nombreNormalizado
-  );
-  
-  if (!encontrado) {
-    Logger.log(`❌ "${personalSeleccionado}" NO se encuentra en la lista de ${tipoEsperado}s:`);
-    Logger.log(`   Lista disponible: ${listaCorrecta.join(", ")}`);
-  } else {
-    Logger.log(`✅ "${personalSeleccionado}" confirmado como ${tipoEsperado}`);
-  }
-  
-  return encontrado;
-}
 function calcularCostosGastroenterologos(personalSeleccionado, fechaDesde, fechaHasta) {
   Logger.log("🏥 CALCULANDO COSTOS PARA GASTROENTERÓLOGOS");
   Logger.log(`👨‍⚕️ Personal: ${personalSeleccionado}`);
@@ -3249,37 +3126,303 @@ function generarReportePorTipo(personalSeleccionado, fechaDesde, fechaHasta) {
 }
 
 /**
- * Función de prueba específica para Anest Manuel
+ * Función para obtener todos los anestesiólogos de la hoja Personal
  */
-function probarAnestManuelConFuncionSeparada() {
-  Logger.log("🧪 PROBANDO ANEST MANUEL CON FUNCIÓN SEPARADA");
+function obtenerTodosLosAnestesiologos() {
+  Logger.log("🔍 OBTENIENDO TODOS LOS ANESTESIÓLOGOS");
   
-  // Usar fechas amplias para incluir todos los registros
-  const fechaDesde = "2024-01-01";
-  const fechaHasta = "2025-12-31";
-  
-  const reporte = generarReportePorTipo("Anest Manuel", fechaDesde, fechaHasta);
-  
-  Logger.log("📊 RESULTADO:");
-  Logger.log(JSON.stringify(reporte, null, 2));
-  
-  return reporte;
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hojaPersonal = ss.getSheetByName("Personal");
+    
+    if (!hojaPersonal) {
+      throw new Error("❌ La hoja 'Personal' no existe.");
+    }
+    
+    const datos = hojaPersonal.getDataRange().getValues();
+    const anestesiologos = new Set();
+    
+    // Columna 1 (B) = Anestesiólogos
+    for (let i = 1; i < datos.length; i++) {
+      const nombre = datos[i][1]; // Columna B (índice 1)
+      if (nombre && typeof nombre === "string" && nombre.trim()) {
+        anestesiologos.add(nombre.trim());
+      }
+    }
+    
+    const resultado = [...anestesiologos].sort();
+    Logger.log("📋 Anestesiólogos encontrados en la columna 1:");
+    resultado.forEach((nombre, index) => {
+      Logger.log(`   ${index + 1}. "${nombre}"`);
+    });
+    
+    return resultado;
+    
+  } catch (error) {
+    Logger.log(`❌ Error obteniendo anestesiólogos: ${error.message}`);
+    return [];
+  }
 }
 
 /**
- * Función de prueba específica para Anest Nicole
+ * Función para obtener todos los gastroenterólogos de la hoja Personal
  */
-function probarAnestNicoleConFuncionSeparada() {
-  Logger.log("🧪 PROBANDO ANEST NICOLE CON FUNCIÓN SEPARADA");
+function obtenerTodosLosGastroenterologos() {
+  Logger.log("🔍 OBTENIENDO TODOS LOS GASTROENTERÓLOGOS");
   
-  // Usar fechas amplias para incluir todos los registros
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hojaPersonal = ss.getSheetByName("Personal");
+    
+    if (!hojaPersonal) {
+      throw new Error("❌ La hoja 'Personal' no existe.");
+    }
+    
+    const datos = hojaPersonal.getDataRange().getValues();
+    const gastroenterologos = new Set();
+    
+    // Columna 0 (A) = Gastroenterólogos
+    for (let i = 1; i < datos.length; i++) {
+      const nombre = datos[i][0]; // Columna A (índice 0)
+      if (nombre && typeof nombre === "string" && nombre.trim()) {
+        gastroenterologos.add(nombre.trim());
+      }
+    }
+    
+    const resultado = [...gastroenterologos].sort();
+    Logger.log("📋 Gastroenterólogos encontrados en la columna 0:");
+    resultado.forEach((nombre, index) => {
+      Logger.log(`   ${index + 1}. "${nombre}"`);
+    });
+    
+    return resultado;
+    
+  } catch (error) {
+    Logger.log(`❌ Error obteniendo gastroenterólogos: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Función para obtener todos los técnicos de la hoja Personal
+ */
+function obtenerTodosLosTecnicos() {
+  Logger.log("🔍 OBTENIENDO TODOS LOS TÉCNICOS");
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hojaPersonal = ss.getSheetByName("Personal");
+    
+    if (!hojaPersonal) {
+      throw new Error("❌ La hoja 'Personal' no existe.");
+    }
+    
+    const datos = hojaPersonal.getDataRange().getValues();
+    const tecnicos = new Set();
+    
+    // Columna 2 (C) = Técnicos
+    for (let i = 1; i < datos.length; i++) {
+      const nombre = datos[i][2]; // Columna C (índice 2)
+      if (nombre && typeof nombre === "string" && nombre.trim()) {
+        tecnicos.add(nombre.trim());
+      }
+    }
+    
+    const resultado = [...tecnicos].sort();
+    Logger.log("� Técnicos encontrados en la columna 2:");
+    resultado.forEach((nombre, index) => {
+      Logger.log(`   ${index + 1}. "${nombre}"`);
+    });
+    
+    return resultado;
+    
+  } catch (error) {
+    Logger.log(`❌ Error obteniendo técnicos: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Función para probar el cálculo con TODOS los anestesiólogos registrados
+ */
+function probarTodosLosAnestesiologos() {
+  Logger.log("🧪 PROBANDO CÁLCULOS PARA TODOS LOS ANESTESIÓLOGOS");
+  
+  const anestesiologos = obtenerTodosLosAnestesiologos();
+  
+  if (anestesiologos.length === 0) {
+    Logger.log("❌ No se encontraron anestesiólogos en la hoja Personal");
+    return;
+  }
+  
   const fechaDesde = "2024-01-01";
   const fechaHasta = "2025-12-31";
   
-  const reporte = generarReportePorTipo("Anest Nicole", fechaDesde, fechaHasta);
+  const resultados = [];
+  
+  for (const anestesiologo of anestesiologos) {
+    Logger.log(`\n🔍 CALCULANDO PARA: "${anestesiologo}"`);
+    
+    const reporte = generarReportePorTipo(anestesiologo, fechaDesde, fechaHasta);
+    
+    resultados.push({
+      nombre: anestesiologo,
+      success: reporte.success,
+      costoTotal: reporte.success ? reporte.costoTotal : 0,
+      procedimientos: reporte.success ? reporte.totalProcedimientos : 0,
+      mensaje: reporte.message || reporte.mensaje
+    });
+    
+    if (reporte.success) {
+      Logger.log(`   ✅ $${reporte.costoTotal} (${reporte.totalProcedimientos} procedimientos)`);
+    } else {
+      Logger.log(`   ❌ ${reporte.message}`);
+    }
+  }
+  
+  Logger.log("\n📊 RESUMEN FINAL:");
+  Logger.log("==================");
+  
+  let totalGeneral = 0;
+  let procedimientosGenerales = 0;
+  
+  for (const resultado of resultados) {
+    Logger.log(`${resultado.nombre}: $${resultado.costoTotal} (${resultado.procedimientos} proc.)`);
+    totalGeneral += resultado.costoTotal;
+    procedimientosGenerales += resultado.procedimientos;
+  }
+  
+  Logger.log("==================");
+  Logger.log(`💰 TOTAL GENERAL: $${totalGeneral}`);
+  Logger.log(`📋 PROCEDIMIENTOS TOTALES: ${procedimientosGenerales}`);
+  
+  return resultados;
+}
+
+/**
+ * Función para verificar coincidencias entre Personal y RegistrosProcedimientos
+ */
+function verificarCoincidenciasPersonalRegistros() {
+  Logger.log("🔍 VERIFICANDO COINCIDENCIAS ENTRE PERSONAL Y REGISTROS");
+  
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hojaPersonal = ss.getSheetByName("Personal");
+    const hojaRegistros = ss.getSheetByName("RegistrosProcedimientos");
+    
+    if (!hojaPersonal || !hojaRegistros) {
+      throw new Error("❌ No se encontraron las hojas necesarias");
+    }
+    
+    // Obtener todos los nombres del personal
+    const todosLosAnestesiologos = obtenerTodosLosAnestesiologos();
+    const todosLosGastroenterologos = obtenerTodosLosGastroenterologos();
+    const todosLosTecnicos = obtenerTodosLosTecnicos();
+    
+    const todoElPersonal = [
+      ...todosLosAnestesiologos,
+      ...todosLosGastroenterologos, 
+      ...todosLosTecnicos
+    ];
+    
+    Logger.log(`📋 Total personal registrado: ${todoElPersonal.length}`);
+    
+    // Obtener nombres únicos de los registros
+    const datosRegistros = hojaRegistros.getDataRange().getValues();
+    const nombresEnRegistros = new Set();
+    
+    for (let i = 1; i < datosRegistros.length; i++) {
+      const nombre = String(datosRegistros[i][1] || "").trim();
+      if (nombre) {
+        nombresEnRegistros.add(nombre);
+      }
+    }
+    
+    const nombresRegistrosArray = [...nombresEnRegistros].sort();
+    Logger.log(`📋 Nombres únicos en registros: ${nombresRegistrosArray.length}`);
+    
+    // Verificar coincidencias exactas
+    Logger.log("\n✅ NOMBRES QUE COINCIDEN EXACTAMENTE:");
+    const coincidenciasExactas = [];
+    
+    for (const nombrePersonal of todoElPersonal) {
+      if (nombresEnRegistros.has(nombrePersonal)) {
+        coincidenciasExactas.push(nombrePersonal);
+        Logger.log(`   ✅ "${nombrePersonal}"`);
+      }
+    }
+    
+    // Verificar nombres en registros que NO están en Personal
+    Logger.log("\n❓ NOMBRES EN REGISTROS QUE NO ESTÁN EN PERSONAL:");
+    const sinCoincidencia = [];
+    
+    for (const nombreRegistro of nombresRegistrosArray) {
+      if (!todoElPersonal.includes(nombreRegistro)) {
+        sinCoincidencia.push(nombreRegistro);
+        Logger.log(`   ❓ "${nombreRegistro}"`);
+      }
+    }
+    
+    // Verificar nombres en Personal que NO están en registros
+    Logger.log("\n🔍 NOMBRES EN PERSONAL SIN REGISTROS:");
+    const sinRegistros = [];
+    
+    for (const nombrePersonal of todoElPersonal) {
+      if (!nombresEnRegistros.has(nombrePersonal)) {
+        sinRegistros.push(nombrePersonal);
+        Logger.log(`   🔍 "${nombrePersonal}"`);
+      }
+    }
+    
+    Logger.log("\n📊 RESUMEN:");
+    Logger.log(`✅ Coincidencias exactas: ${coincidenciasExactas.length}`);
+    Logger.log(`❓ En registros sin estar en Personal: ${sinCoincidencia.length}`);
+    Logger.log(`🔍 En Personal sin registros: ${sinRegistros.length}`);
+    
+    return {
+      coincidenciasExactas,
+      sinCoincidencia,
+      sinRegistros,
+      todoElPersonal,
+      nombresEnRegistros: nombresRegistrosArray
+    };
+    
+  } catch (error) {
+    Logger.log(`❌ Error verificando coincidencias: ${error.message}`);
+    return null;
+  }
+}
+
+/**
+ * Función para probar un anestesiólogo específico por nombre
+ */
+function probarAnestesiologoEspecifico(nombreAnestesiologo) {
+  Logger.log(`🧪 PROBANDO ANESTESIÓLOGO ESPECÍFICO: "${nombreAnestesiologo}"`);
+  
+  // Verificar que existe en la hoja Personal
+  const todosLosAnestesiologos = obtenerTodosLosAnestesiologos();
+  
+  if (!todosLosAnestesiologos.includes(nombreAnestesiologo)) {
+    Logger.log(`❌ "${nombreAnestesiologo}" NO está en la lista de anestesiólogos de la hoja Personal`);
+    Logger.log("📋 Anestesiólogos disponibles:");
+    todosLosAnestesiologos.forEach(nombre => Logger.log(`   - "${nombre}"`));
+    return null;
+  }
+  
+  Logger.log(`✅ "${nombreAnestesiologo}" está registrado como anestesiólogo`);
+  
+  // Calcular con fechas amplias
+  const fechaDesde = "2024-01-01";
+  const fechaHasta = "2025-12-31";
+  
+  const reporte = generarReportePorTipo(nombreAnestesiologo, fechaDesde, fechaHasta);
   
   Logger.log("📊 RESULTADO:");
-  Logger.log(JSON.stringify(reporte, null, 2));
+  if (reporte.success) {
+    Logger.log(`✅ ${reporte.mensaje}`);
+  } else {
+    Logger.log(`❌ ${reporte.message}`);
+  }
   
   return reporte;
 }
