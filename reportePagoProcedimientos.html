@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="es" xml:lang="es">
 
 <head>
+    <title>Reporte de Pago de Procedimientos</title>
     <base target="_top">
     <?!= include('stylesReportePagoProcedimientos') ?>
     <?!= include('stylesBotonRegresar') ?>
@@ -84,44 +85,52 @@
 
     <!-- ✅ ÁREA DE RESULTADOS MEJORADA -->
     <div id="printableReportContent">
-        <h2 id="reportTitle"></h2>
+        <h2 id="reportTitle">Reporte de Pago de Procedimientos</h2>
         <div id="resultado"></div>
         <div class="totales-container">
             <h3 class="totales-title">Resumen de Totales</h3>
             <table class="totales-table">
-                <tr>
-                    <td class="label-td">Subtotal original:</td>
-                    <td class="value-td">₡<span id="subtotalOriginal">0.00</span></td>
-                </tr>
-                <tr class="solo-pantalla">
-                    <td class="label-td">Descuento aplicado:</td>
-                    <td class="value-td">
-                        <input type="number" id="montoDescontar" min="0" step="0.01" placeholder="0.00">
-                        <span id="montoDescontarTexto"></span>
-                    </td>
-                </tr>
-                <tr class="solo-pantalla">
-                    <td class="label-td">Extra (₡):</td>
-                    <td class="value-td">
-                        <input type="number" id="montoExtra" min="0" step="0.01" value="0" placeholder="0.00">
-                        <span id="montoExtraTexto"></span>
-                    </td>
-                </tr>
-                <tr class="solo-pantalla">
-                    <td class="label-td">Motivo:</td>
-                    <td class="value-td">
-                        <input type="text" id="motivoDescuento" placeholder="Motivo del descuento o extra" maxlength="100">
-                        <span id="motivoDescuentoTexto"></span>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="label-td">Subtotal con ajustes:</td>
-                    <td class="value-td">₡<span id="subtotalConDescuento">0.00</span></td>
-                </tr>
-                <tr class="grand-total-row">
-                    <td><strong>GRAN TOTAL:</strong></td>
-                    <td><strong>₡<span id="granTotal">0.00</span></strong></td>
-                </tr>
+                <thead>
+                    <tr>
+                        <th>Concepto</th>
+                        <th>Valor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="label-td">Subtotal original:</td>
+                        <td class="value-td">₡<span id="subtotalOriginal">0.00</span></td>
+                    </tr>
+                    <tr class="solo-pantalla">
+                        <td class="label-td">Descuento aplicado:</td>
+                        <td class="value-td">
+                            <input type="number" id="montoDescontar" min="0" step="0.01" placeholder="0.00">
+                            <span id="montoDescontarTexto"></span>
+                        </td>
+                    </tr>
+                    <tr class="solo-pantalla">
+                        <td class="label-td">Extra (₡):</td>
+                        <td class="value-td">
+                            <input type="number" id="montoExtra" min="0" step="0.01" value="0" placeholder="0.00">
+                            <span id="montoExtraTexto"></span>
+                        </td>
+                    </tr>
+                    <tr class="solo-pantalla">
+                        <td class="label-td">Motivo:</td>
+                        <td class="value-td">
+                            <input type="text" id="motivoDescuento" placeholder="Motivo del descuento o extra" maxlength="100">
+                            <span id="motivoDescuentoTexto"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-td">Subtotal con ajustes:</td>
+                        <td class="value-td">₡<span id="subtotalConDescuento">0.00</span></td>
+                    </tr>
+                    <tr class="grand-total-row">
+                        <td><strong>GRAN TOTAL:</strong></td>
+                        <td><strong>₡<span id="granTotal">0.00</span></strong></td>
+                    </tr>
+                </tbody>
             </table>
             <div id="comentarioDescuento" class="comment-section"></div>
         </div>
