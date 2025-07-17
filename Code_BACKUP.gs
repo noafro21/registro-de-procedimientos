@@ -1,24 +1,3 @@
-// ================= MEJORAS IMPLEMENTADAS =================
-// Configuración centralizada de columnas para evitar confusiones
-const COLUMNAS_PERSONAL = {
-  DOCTOR: 0, // Columna A
-  ANESTESIOLOGO: 1, // Columna B (CONFIRMADO)
-  TECNICO: 2, // Columna C
-  RADIOLOGO: 3, // Columna D
-  ENFERMERO: 4, // Columna E
-  SECRETARIA: 5, // Columna F
-  EMAIL: 6, // Columna G
-};
-
-const TIPOS_PERSONAL = {
-  0: "Doctor",
-  1: "Anestesiólogo",
-  2: "Técnico",
-  3: "Radiólogo",
-  4: "Enfermero",
-  5: "Secretaria",
-};
-
 // --- Funciones principales del menú ---
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -655,50 +634,83 @@ function mostrarReportePagoProcedimientos() {
 }
 
 function obtenerTipoDePersonal(nombre, hojaPersonal) {
-  try {
+  if (!hojaPersonal) {
+    hojaPersonal =
+      SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Personal");
     if (!hojaPersonal) {
-      hojaPersonal =
-        SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Personal");
-      if (!hojaPersonal) {
-        Logger.log("❌ La hoja 'Personal' no existe.");
-        return null;
-      }
+      Logger.log("❌ La hoja 'Personal' no existe.");
+      return null;
     }
+  }
+  const datos = hojaPersonal.getDataRange().getValues();
+  const nombreNorm = String(nombre || "")
+    .trim()
+    .toUpperCase();
 
-    const datos = hojaPersonal.getDataRange().getValues();
-    const nombreNormalizado = normalizarNombreMejorado(nombre);
+  Logger.log(`🔍 BÚSQUEDA EN obtenerTipoDePersonal: "${nombreNorm}"`);
+  Logger.log(`📊 Total de filas en Personal: ${datos.length}`);
 
-    Logger.log(`🔍 obtenerTipoDePersonal: Buscando "${nombreNormalizado}"`);
-    Logger.log(`📊 Revisando ${datos.length} filas en Personal`);
+  // Mostrar datos de la hoja Personal para debug
+  Logger.log(`📋 CONTENIDO DE HOJA PERSONAL (primeras 10 filas):`);
+  for (let i = 0; i < Math.min(10, datos.length); i++) {
+    const fila = datos[i];
+    Logger.log(
+      `   Fila ${i + 1}: [${fila[0] || "vacío"}, ${fila[1] || "vacío"}, ${
+        fila[2] || "vacío"
+      }, ${fila[3] || "vacío"}, ${fila[4] || "vacío"}, ${fila[5] || "vacío"}]`
+    );
+  }
 
-    // Buscar en todas las columnas de personal (A-F)
-    for (let i = 1; i < datos.length; i++) {
-      const fila = datos[i];
+  for (let i = 1; i < datos.length; i++) {
+    const fila = datos[i];
+    for (let col = 0; col <= 5; col++) {
+      const celdaNorm = String(fila[col] || "")
+        .trim()
+        .toUpperCase();
 
-      for (let col = 0; col <= 5; col++) {
-        const valorCelda = String(fila[col] || "").trim();
+      // Log específico para anestesiólogos (columna 1)
+      if (col === 1 && celdaNorm !== "") {
+        Logger.log(
+          `   🏥 Anestesiólogo en fila ${
+            i + 1
+          }, col ${col}: "${celdaNorm}" vs "${nombreNorm}" = ${
+            celdaNorm === nombreNorm
+          }`
+        );
+      }
 
-        if (
-          valorCelda &&
-          sonLaMismaPersonaMejorado(nombreNormalizado, valorCelda)
-        ) {
-          const tipoEncontrado = TIPOS_PERSONAL[col];
-          Logger.log(
-            `✅ ENCONTRADO en fila ${
-              i + 1
-            }, columna ${col}: "${valorCelda}" -> ${tipoEncontrado}`
-          );
-          return tipoEncontrado;
+      if (celdaNorm === nombreNorm) {
+        Logger.log(
+          `   ✅ COINCIDENCIA ENCONTRADA en fila ${
+            i + 1
+          }, columna ${col}: "${celdaNorm}"`
+        );
+        switch (col) {
+          case 0:
+            Logger.log(`   📋 Retornando: "Doctor"`);
+            return "Doctor";
+          case 1:
+            Logger.log(`   📋 Retornando: "Anestesiólogo"`);
+            return "Anestesiólogo";
+          case 2:
+            Logger.log(`   📋 Retornando: "Técnico"`);
+            return "Técnico";
+          case 3:
+            Logger.log(`   📋 Retornando: "Radiólogo"`);
+            return "Radiólogo";
+          case 4:
+            Logger.log(`   📋 Retornando: "Enfermero"`);
+            return "Enfermero";
+          case 5:
+            Logger.log(`   📋 Retornando: "Secretaria"`);
+            return "Secretaria";
         }
       }
     }
-
-    Logger.log(`❌ No se encontró "${nombreNormalizado}" en la hoja Personal`);
-    return null;
-  } catch (error) {
-    Logger.log(`❌ Error en obtenerTipoDePersonal: ${error.message}`);
-    return null;
   }
+
+  Logger.log(`❌ NO SE ENCONTRÓ COINCIDENCIA para "${nombreNorm}"`);
+  return null;
 }
 
 function calcularCostos(nombre, mes, anio, quincena) {
@@ -708,7 +720,6 @@ function calcularCostos(nombre, mes, anio, quincena) {
       lv: {},
       sab: {},
       totales: { subtotal: 0, iva: 0, total_con_iva: 0 },
-      detalleRegistros: [], // ✅ AGREGADO: incluir detalleRegistros siempre
     };
   }
 
@@ -774,7 +785,7 @@ function calcularCostos(nombre, mes, anio, quincena) {
       .toUpperCase();
   }
 
-  // ✅ FUNCIÓN CORREGIDA: Búsqueda PRECISA para evitar falsos positivos
+  // ✅ FUNCIÓN MEJORADA: Búsqueda más flexible pero precisa
   function esLaMismaPersona(nombreSeleccionado, nombreEnRegistro) {
     // Manejar valores nulos/undefined
     if (!nombreSeleccionado || !nombreEnRegistro) {
@@ -790,55 +801,42 @@ function calcularCostos(nombre, mes, anio, quincena) {
       return true;
     }
 
-    // 2. MODIFICADO: Solo permitir coincidencia si el nombre seleccionado está completo en el registro
-    // Para evitar que "ANEST MANUEL" coincida con "ANEST NICOLE"
-    if (registroNorm === seleccionadoNorm) {
-      Logger.log(`✅ COINCIDENCIA COMPLETA: "${seleccionadoNorm}"`);
+    // 2. Uno contiene al otro (para nombres parciales)
+    if (
+      seleccionadoNorm.includes(registroNorm) ||
+      registroNorm.includes(seleccionadoNorm)
+    ) {
+      Logger.log(
+        `✅ COINCIDENCIA PARCIAL: "${seleccionadoNorm}" ↔ "${registroNorm}"`
+      );
       return true;
     }
 
-    // 3. NUEVO: Búsqueda estricta por nombres únicos
-    // Solo coincide si el nombre seleccionado contiene TODAS las palabras del registro
+    // 3. Coincidencia por palabras clave (para nombres compuestos)
     const palabrasSeleccionado = seleccionadoNorm
       .split(" ")
-      .filter((p) => p.length > 1);
+      .filter((p) => p.length > 2);
     const palabrasRegistro = registroNorm
       .split(" ")
-      .filter((p) => p.length > 1);
+      .filter((p) => p.length > 2);
 
-    // Si el registro tiene menos palabras que la selección, verificar coincidencia completa
-    if (palabrasRegistro.length <= palabrasSeleccionado.length) {
-      const todasLasPalabrasCoinciden = palabrasRegistro.every((palabraReg) =>
-        palabrasSeleccionado.some((palabraSel) => palabraSel === palabraReg)
+    if (palabrasSeleccionado.length > 0 && palabrasRegistro.length > 0) {
+      const coincidencias = palabrasSeleccionado.filter((p1) =>
+        palabrasRegistro.some((p2) => p1.includes(p2) || p2.includes(p1))
       );
 
-      if (todasLasPalabrasCoinciden) {
+      // Si al menos 50% de las palabras coinciden
+      if (
+        coincidencias.length >=
+        Math.min(palabrasSeleccionado.length, palabrasRegistro.length) * 0.5
+      ) {
         Logger.log(
-          `✅ COINCIDENCIA COMPLETA DE PALABRAS: "${seleccionadoNorm}" ↔ "${registroNorm}"`
+          `✅ COINCIDENCIA POR PALABRAS: "${seleccionadoNorm}" ↔ "${registroNorm}"`
         );
         return true;
       }
     }
 
-    // 4. NUEVO: Verificación estricta si ambos nombres tienen exactamente las mismas palabras clave
-    if (
-      palabrasSeleccionado.length === palabrasRegistro.length &&
-      palabrasSeleccionado.length >= 2
-    ) {
-      const coincidenciasExactas = palabrasSeleccionado.filter((palabraSel) =>
-        palabrasRegistro.includes(palabraSel)
-      );
-
-      if (coincidenciasExactas.length === palabrasSeleccionado.length) {
-        Logger.log(
-          `✅ COINCIDENCIA EXACTA DE TODAS LAS PALABRAS: "${seleccionadoNorm}" ↔ "${registroNorm}"`
-        );
-        return true;
-      }
-    }
-
-    // Si ninguna condición se cumple, NO hay coincidencia
-    Logger.log(`❌ NO COINCIDE: "${seleccionadoNorm}" ≠ "${registroNorm}"`);
     return false;
   }
 
@@ -896,7 +894,6 @@ function calcularCostos(nombre, mes, anio, quincena) {
       lv: {},
       sab: {},
       totales: { subtotal: 0, iva: 0, total_con_iva: 0 },
-      detalleRegistros: [], // ✅ AGREGADO: incluir detalleRegistros siempre
     };
   }
 
@@ -925,7 +922,6 @@ function calcularCostos(nombre, mes, anio, quincena) {
     lv: {},
     sab: {},
     totales: { subtotal: 0, iva: 0, total_con_iva: 0 },
-    detalleRegistros: [], // ✅ NUEVO: Array para almacenar detalles de cada registro
   };
 
   Object.keys(mapeoProcedimientos).forEach((key) => {
@@ -1030,22 +1026,6 @@ function calcularCostos(nombre, mes, anio, quincena) {
       let colIndex = 2;
       let procedimientosEnFila = 0;
 
-      // ✅ NUEVO: Objeto para capturar detalles de este registro
-      const detalleRegistro = {
-        fila: numeroFila,
-        fecha: fecha.toLocaleDateString("es-ES", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
-        fechaOriginal: fecha,
-        persona: personaEnRegistro,
-        esSabado: esSabado,
-        procedimientos: [],
-        subtotalRegistro: 0,
-      };
-
       for (const key of Object.keys(mapeoProcedimientos)) {
         const cantidad = Number(fila[colIndex]) || 0;
         if (cantidad > 0) {
@@ -1079,17 +1059,6 @@ function calcularCostos(nombre, mes, anio, quincena) {
           const ivaMonto = subtotal * iva;
           const total = subtotal + ivaMonto;
 
-          // ✅ NUEVO: Agregar procedimiento al detalle del registro
-          detalleRegistro.procedimientos.push({
-            nombre: procNombre,
-            cantidad: cantidad,
-            costoUnitario: costo,
-            subtotal: subtotal,
-            iva: ivaMonto,
-            total: total,
-          });
-          detalleRegistro.subtotalRegistro += total;
-
           const targetResumen = esSabado ? resumen.sab : resumen.lv;
           targetResumen[key].cantidad += cantidad;
           targetResumen[key].costo_unitario = costo;
@@ -1110,9 +1079,6 @@ function calcularCostos(nombre, mes, anio, quincena) {
 
       if (procedimientosEnFila === 0) {
         Logger.log(`   ⚠️ Fila válida pero sin procedimientos registrados`);
-      } else {
-        // ✅ NUEVO: Solo agregar registros que tienen procedimientos
-        resumen.detalleRegistros.push(detalleRegistro);
       }
     } catch (error) {
       Logger.log(`❌ Error procesando fila ${numeroFila}: ${error.message}`);
@@ -1127,42 +1093,50 @@ function calcularCostos(nombre, mes, anio, quincena) {
   Logger.log(
     `   💰 Total calculado: $${resumen.totales.total_con_iva.toFixed(2)}`
   );
-  Logger.log(
-    `   📋 Detalles de registros capturados: ${resumen.detalleRegistros.length}`
-  );
 
-  // ✅ NUEVO: Asegurar que el objeto es JSON válido antes de retornarlo
-  try {
-    const resumenParaRetornar = {
-      lv: resumen.lv || {},
-      sab: resumen.sab || {},
-      totales: resumen.totales || { subtotal: 0, iva: 0, total_con_iva: 0 },
-      detalleRegistros: resumen.detalleRegistros || [],
-    };
+  if (registrosEncontrados === 0) {
+    Logger.log(`\n🔍 EJECUTANDO DIAGNÓSTICO COMPLETO...`);
 
-    // Validar que se puede serializar
-    const jsonTest = JSON.stringify(resumenParaRetornar);
-    Logger.log(`✅ Objeto JSON válido: ${jsonTest.length} caracteres`);
+    // Ejecutar diagnóstico completo
+    const diagnostico = diagnosticoCompleto(nombre, mes, anio);
+
+    Logger.log(`\n📋 DIAGNÓSTICO COMPLETO COMPLETADO`);
     Logger.log(
-      `🔍 Estructura final a retornar: ${JSON.stringify(
-        resumenParaRetornar,
-        null,
-        2
-      )}`
+      `Problemas identificados: ${
+        diagnostico.problemas ? diagnostico.problemas.length : 0
+      }`
     );
 
-    return resumenParaRetornar;
-  } catch (error) {
-    Logger.log(`❌ Error preparando objeto para retorno: ${error.message}`);
+    if (diagnostico.problemas && diagnostico.problemas.length > 0) {
+      Logger.log("\n❌ PROBLEMAS ENCONTRADOS:");
+      diagnostico.problemas.forEach((problema) => {
+        Logger.log("   " + problema);
+      });
+    }
 
-    // Retornar objeto simple y seguro
-    return {
-      lv: {},
-      sab: {},
-      totales: { subtotal: 0, iva: 0, total_con_iva: 0 },
-      detalleRegistros: [],
-    };
+    // Mostrar recomendaciones si existen
+    if (diagnostico.recomendaciones && diagnostico.recomendaciones.length > 0) {
+      Logger.log("\n💡 RECOMENDACIONES:");
+      diagnostico.recomendaciones.forEach((recomendacion) => {
+        Logger.log("   " + recomendacion);
+      });
+    }
+
+    // Mostrar coincidencias de nombres encontradas
+    if (
+      diagnostico.analisisRegistros &&
+      diagnostico.analisisRegistros.coincidenciasNombre.length > 0
+    ) {
+      Logger.log("\n💡 NOMBRES SIMILARES ENCONTRADOS:");
+      diagnostico.analisisRegistros.coincidenciasNombre
+        .slice(0, 5)
+        .forEach((c) => {
+          Logger.log(`   Fila ${c.fila}: "${c.nombre}" (${c.fecha})`);
+        });
+    }
   }
+
+  return resumen;
 }
 
 // ...existing code...
@@ -3080,1027 +3054,4 @@ function obtenerTecnicos() {
     Logger.log("ERROR en obtenerTecnicos: " + error.message);
     return [];
   }
-}
-
-// ================= FUNCIONES MEJORADAS AGREGADAS =================
-
-/**
- * Función mejorada para normalizar nombres - elimina caracteres especiales y unifica formato
- */
-function normalizarNombreMejorado(nombre) {
-  if (!nombre) return "";
-
-  return String(nombre)
-    .trim()
-    .replace(/\s+/g, " ") // Múltiples espacios a uno solo
-    .toUpperCase()
-    .replace(/[ÁÀÄÂ]/g, "A")
-    .replace(/[ÉÈËÊ]/g, "E")
-    .replace(/[ÍÌÏÎ]/g, "I")
-    .replace(/[ÓÒÖÔ]/g, "O")
-    .replace(/[ÚÙÜÛ]/g, "U")
-    .replace(/Ñ/g, "N");
-}
-
-/**
- * Función mejorada para comparar nombres de personal
- */
-function sonLaMismaPersonaMejorado(nombre1, nombre2) {
-  if (!nombre1 || !nombre2) return false;
-
-  const norm1 = normalizarNombreMejorado(nombre1);
-  const norm2 = normalizarNombreMejorado(nombre2);
-
-  // 1. Coincidencia exacta
-  if (norm1 === norm2) {
-    return true;
-  }
-
-  // 2. Uno contiene al otro (para nombres parciales como "MANUEL" vs "ANEST MANUEL")
-  if (norm1.includes(norm2) || norm2.includes(norm1)) {
-    return true;
-  }
-
-  // 3. Comparación por palabras clave (para nombres compuestos)
-  const palabras1 = norm1.split(" ").filter((p) => p.length > 2);
-  const palabras2 = norm2.split(" ").filter((p) => p.length > 2);
-
-  if (palabras1.length > 0 && palabras2.length > 0) {
-    const coincidencias = palabras1.filter((p1) =>
-      palabras2.some((p2) => p1.includes(p2) || p2.includes(p1))
-    );
-
-    // Si al menos 50% de las palabras coinciden
-    const porcentajeCoincidencia =
-      coincidencias.length / Math.min(palabras1.length, palabras2.length);
-    return porcentajeCoincidencia >= 0.5;
-  }
-
-  return false;
-}
-
-/**
- * Función auxiliar para verificar si una fecha está en el rango solicitado
- */
-function estaEnRangoFechaMejorado(fecha, mes, anio, quincena) {
-  try {
-    if (!(fecha instanceof Date) || isNaN(fecha.getTime())) {
-      return false;
-    }
-
-    const anioFecha = fecha.getFullYear();
-    const mesFecha = fecha.getMonth() + 1; // getMonth() devuelve 0-11
-    const diaFecha = fecha.getDate();
-
-    // Verificar año y mes
-    if (anioFecha !== parseInt(anio) || mesFecha !== parseInt(mes)) {
-      return false;
-    }
-
-    // Verificar quincena
-    switch (quincena) {
-      case "1-15":
-        return diaFecha >= 1 && diaFecha <= 15;
-      case "16-31":
-        return diaFecha >= 16;
-      case "completo":
-        return true;
-      default:
-        Logger.log(`⚠️ Quincena no reconocida: ${quincena}`);
-        return false;
-    }
-  } catch (error) {
-    Logger.log(`❌ Error en estaEnRangoFechaMejorado: ${error.message}`);
-    return false;
-  }
-}
-
-// ===== NUEVA FUNCIÓN DE DIAGNÓSTICO PARA FILTRADO ESPECÍFICO =====
-function diagnosticarFiltradoPersonal(nombreSeleccionado) {
-  Logger.log(
-    `\n🔍 === DIAGNÓSTICO DE FILTRADO PARA: "${nombreSeleccionado}" ===`
-  );
-
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hojaRegistros = ss.getSheetByName("RegistrosProcedimientos");
-
-  if (!hojaRegistros) {
-    Logger.log("❌ No se encontró la hoja RegistrosProcedimientos");
-    return;
-  }
-
-  const datos = hojaRegistros.getDataRange().getValues();
-  const nombreNormalizado = normalizarNombreMejorado(nombreSeleccionado);
-
-  Logger.log(`📋 Nombre normalizado: "${nombreNormalizado}"`);
-  Logger.log(`📊 Total de filas a revisar: ${datos.length - 1}`);
-
-  // Función interna para pruebas
-  function normalizarNombrePrueba(str) {
-    return String(str || "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toUpperCase();
-  }
-
-  function esLaMismaPersonaPrueba(nombreSel, nombreReg) {
-    if (!nombreSel || !nombreReg) return false;
-
-    const selNorm = normalizarNombrePrueba(nombreSel);
-    const regNorm = normalizarNombrePrueba(nombreReg);
-
-    // Solo coincidencia exacta
-    if (selNorm === regNorm) return true;
-
-    const palabrasSel = selNorm.split(" ").filter((p) => p.length > 1);
-    const palabrasReg = regNorm.split(" ").filter((p) => p.length > 1);
-
-    // Solo si el registro tiene las mismas palabras o menos que la selección
-    if (palabrasReg.length <= palabrasSel.length) {
-      return palabrasReg.every((palabraReg) =>
-        palabrasSel.some((palabraSel) => palabraSel === palabraReg)
-      );
-    }
-
-    return false;
-  }
-
-  let coincidenciasEncontradas = 0;
-  let falsosPositivos = [];
-
-  // Revisar cada fila
-  for (let i = 1; i < datos.length; i++) {
-    const nombreEnRegistro = String(datos[i][1] || "").trim();
-
-    if (nombreEnRegistro) {
-      const coincide = esLaMismaPersonaPrueba(
-        nombreSeleccionado,
-        nombreEnRegistro
-      );
-
-      if (coincide) {
-        coincidenciasEncontradas++;
-        const fecha = datos[i][0];
-        Logger.log(
-          `✅ COINCIDENCIA #${coincidenciasEncontradas}: "${nombreEnRegistro}" en fila ${
-            i + 1
-          } (${fecha})`
-        );
-
-        // Verificar si es un falso positivo
-        if (
-          nombreEnRegistro.toUpperCase() !== nombreSeleccionado.toUpperCase()
-        ) {
-          const esValidoComoVariante = nombreEnRegistro
-            .toUpperCase()
-            .includes(nombreSeleccionado.toUpperCase());
-          if (!esValidoComoVariante) {
-            falsosPositivos.push({
-              fila: i + 1,
-              nombre: nombreEnRegistro,
-              fecha: fecha,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  Logger.log(`\n📊 RESUMEN DEL DIAGNÓSTICO:`);
-  Logger.log(`   ✅ Total de coincidencias: ${coincidenciasEncontradas}`);
-  Logger.log(`   ⚠️ Posibles falsos positivos: ${falsosPositivos.length}`);
-
-  if (falsosPositivos.length > 0) {
-    Logger.log(`\n⚠️ FALSOS POSITIVOS DETECTADOS:`);
-    falsosPositivos.forEach((fp) => {
-      Logger.log(`   Fila ${fp.fila}: "${fp.nombre}" (${fp.fecha})`);
-    });
-  }
-
-  if (coincidenciasEncontradas === 0) {
-    Logger.log(`\n🔍 BÚSQUEDA ALTERNATIVA (nombres similares):`);
-    for (let i = 1; i < Math.min(datos.length, 20); i++) {
-      const nombreReg = String(datos[i][1] || "")
-        .trim()
-        .toUpperCase();
-      if (
-        nombreReg.includes("ANEST") ||
-        nombreReg.includes(nombreNormalizado.split(" ")[0])
-      ) {
-        Logger.log(`   Fila ${i + 1}: "${datos[i][1]}" (${datos[i][0]})`);
-      }
-    }
-  }
-
-  return {
-    totalCoincidencias: coincidenciasEncontradas,
-    falsosPositivos: falsosPositivos.length,
-    detallesFalsosPositivos: falsosPositivos,
-  };
-}
-
-// ===== FUNCIÓN SIMPLE DE PRUEBA =====
-function probarConexion() {
-  Logger.log("🧪 Función de prueba ejecutada correctamente");
-
-  const objetoPrueba = {
-    mensaje: "Conexión exitosa",
-    timestamp: new Date().toISOString(),
-    test: true,
-    detalleRegistros: [
-      {
-        fila: 1,
-        fecha: "Prueba",
-        procedimientos: [],
-      },
-    ],
-  };
-
-  // Verificar que es JSON válido
-  try {
-    const jsonString = JSON.stringify(objetoPrueba);
-    Logger.log(`✅ JSON válido: ${jsonString.length} caracteres`);
-    return objetoPrueba;
-  } catch (error) {
-    Logger.log(`❌ Error en JSON: ${error.message}`);
-    return { error: "Error en serialización JSON" };
-  }
-}
-
-// ===== FUNCIÓN DE PRUEBA PARA calcularCostos =====
-function probarCalcularCostos() {
-  Logger.log("🧪 Probando calcularCostos con datos de prueba...");
-
-  try {
-    const resultado = calcularCostos("Test User", 1, 2024, "1-15");
-    Logger.log("✅ calcularCostos ejecutado sin errores");
-    Logger.log("Estructura del resultado:");
-    Logger.log(JSON.stringify(resultado, null, 2));
-    return resultado;
-  } catch (error) {
-    Logger.log("❌ Error en calcularCostos: " + error.message);
-    Logger.log("Stack trace: " + error.stack);
-    throw error;
-  }
-}
-
-// ===== NUEVA FUNCIÓN: Probar con datos reales =====
-function probarConDatosReales() {
-  Logger.log("🧪 Probando calcularCostos con datos reales...");
-
-  // Usar nombres que vemos en los logs
-  const nombresReales = [
-    "Dra Ivannia Chavarria Soto",
-    "Anest Manuel",
-    "Anest Nicole",
-  ];
-
-  nombresReales.forEach((nombre) => {
-    try {
-      Logger.log(`\n🔍 Probando con: "${nombre}"`);
-      const resultado = calcularCostos(nombre, 7, 2025, "completo");
-      Logger.log(`✅ Resultado para ${nombre}:`);
-      Logger.log(
-        `   - Registros encontrados: ${resultado.detalleRegistros.length}`
-      );
-      Logger.log(`   - Total: $${resultado.totales.total_con_iva}`);
-      Logger.log(
-        `   - Estructura JSON válida: ${JSON.stringify(resultado).length} chars`
-      );
-    } catch (error) {
-      Logger.log(`❌ Error con ${nombre}: ${error.message}`);
-    }
-  });
-
-  return "Prueba completada - revisa los logs";
-}
-
-// ===== SOLUCIÓN: calcularCostos SIN detalleRegistros para evitar límites =====
-function calcularCostosSimple(nombre, mes, anio, quincena) {
-  Logger.log(
-    `🚀 INICIANDO calcularCostosSimple: nombre=${nombre}, mes=${mes}, anio=${anio}, quincena=${quincena}`
-  );
-
-  try {
-    // Llamar a la función original para obtener el resultado completo
-    const resultadoCompleto = calcularCostos(nombre, mes, anio, quincena);
-
-    // Crear una versión sin detalleRegistros para evitar límites de tamaño
-    const resultadoSimple = {
-      lv: resultadoCompleto.lv,
-      sab: resultadoCompleto.sab,
-      totales: resultadoCompleto.totales,
-      // NO incluir detalleRegistros para evitar problema de tamaño
-      metadatos: {
-        numeroRegistros: resultadoCompleto.detalleRegistros
-          ? resultadoCompleto.detalleRegistros.length
-          : 0,
-        nombre: nombre,
-        periodo: `${mes}/${anio}`,
-        quincena: quincena,
-      },
-    };
-
-    Logger.log(
-      `✅ Resultado simple generado - ${
-        JSON.stringify(resultadoSimple).length
-      } caracteres`
-    );
-    return resultadoSimple;
-  } catch (error) {
-    Logger.log(`❌ Error en calcularCostosSimple: ${error.message}`);
-    throw error;
-  }
-}
-
-// ===== FUNCIÓN SEPARADA OPTIMIZADA para obtener solo los detalles de registros =====
-function obtenerDetalleRegistros(nombre, mes, anio, quincena) {
-  Logger.log(
-    `🔍 OBTENIENDO detalles OPTIMIZADO para: ${nombre}, ${mes}/${anio}, ${quincena}`
-  );
-
-  try {
-    // ===== OBTENER SHEETS =====
-    const sheetRegistros = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-      "RegistrosProcedimientos"
-    );
-    const registrosData = sheetRegistros.getDataRange().getValues();
-
-    Logger.log(
-      `📊 Total de filas en RegistrosProcedimientos: ${registrosData.length}`
-    );
-
-    // ===== NORMALIZAR NOMBRE =====
-    const nombreNormalizado = nombre.toUpperCase();
-    Logger.log(`🔍 Nombre normalizado para búsqueda: "${nombreNormalizado}"`);
-
-    const detalleRegistros = [];
-    let registrosEncontrados = 0;
-
-    // ===== BUSCAR SOLO REGISTROS QUE COINCIDAN =====
-    for (let i = 1; i < registrosData.length; i++) {
-      const fila = registrosData[i];
-      const nombrePersona = fila[0];
-      const fechaRegistro = fila[1];
-
-      if (!nombrePersona || !fechaRegistro) continue;
-
-      // Normalizar nombre del registro
-      const nombreRegistroNormalizado = nombrePersona.toString().toUpperCase();
-
-      // Verificar coincidencia exacta del nombre
-      if (nombreRegistroNormalizado !== nombreNormalizado) continue;
-
-      // Verificar fecha
-      const fecha = new Date(fechaRegistro);
-      if (
-        fecha.getMonth() + 1 !== parseInt(mes) ||
-        fecha.getFullYear() !== parseInt(anio)
-      )
-        continue;
-
-      // Verificar quincena si no es "completo"
-      if (quincena !== "completo") {
-        const dia = fecha.getDate();
-        if (quincena === "1-15" && dia > 15) continue;
-        if (quincena === "16-31" && dia <= 15) continue;
-      }
-
-      registrosEncontrados++;
-      Logger.log(
-        `✅ REGISTRO VÁLIDO #${registrosEncontrados} - Fila ${
-          i + 1
-        }: ${nombrePersona}, ${fecha.toDateString()}`
-      );
-
-      // Solo crear el detalle básico para este registro
-      const esSabado = fecha.getDay() === 6;
-      const fechaFormateada = fecha.toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-
-      detalleRegistros.push({
-        fila: i + 1,
-        fecha: fechaFormateada,
-        fechaOriginal: fecha.toISOString(),
-        persona: nombrePersona,
-        esSabado: esSabado,
-        // Simplificar procedimientos para reducir tamaño
-        procedimientosResumen: `${registrosEncontrados} registro(s) procesado(s)`,
-      });
-    }
-
-    const resultado = {
-      detalleRegistros: detalleRegistros,
-      metadatos: {
-        nombre: nombre,
-        periodo: `${mes}/${anio}`,
-        quincena: quincena,
-        totalRegistros: detalleRegistros.length,
-      },
-    };
-
-    const tamanoJson = JSON.stringify(resultado).length;
-    Logger.log(
-      `✅ Detalles OPTIMIZADOS obtenidos - ${detalleRegistros.length} registros, ${tamanoJson} caracteres`
-    );
-
-    return resultado;
-  } catch (error) {
-    Logger.log(`❌ Error obteniendo detalles: ${error.message}`);
-    throw error;
-  }
-}
-
-// ===== FUNCIÓN MÍNIMA para probar comunicación de detalles =====
-function obtenerDetalleRegistrosMinimo(nombre, mes, anio, quincena) {
-  Logger.log(
-    `🔍 OBTENIENDO detalles MÍNIMO para: ${nombre}, ${mes}/${anio}, ${quincena}`
-  );
-
-  try {
-    const resultado = {
-      detalleRegistros: [
-        {
-          fila: 1,
-          fecha: "Prueba de comunicación",
-          persona: nombre,
-          esSabado: false,
-        },
-      ],
-      metadatos: {
-        nombre: nombre,
-        periodo: `${mes}/${anio}`,
-        quincena: quincena,
-        totalRegistros: 1,
-        mensaje: "Función de prueba - comunicación exitosa",
-      },
-    };
-
-    const tamanoJson = JSON.stringify(resultado).length;
-    Logger.log(`✅ Detalles MÍNIMOS generados - ${tamanoJson} caracteres`);
-
-    return resultado;
-  } catch (error) {
-    Logger.log(`❌ Error en detalles mínimos: ${error.message}`);
-    throw error;
-  }
-}
-
-// ===== FUNCIÓN HÍBRIDA: Obtener detalles usando datos del resumen =====
-function obtenerDetalleRegistrosHibrido(nombre, mes, anio, quincena) {
-  Logger.log(
-    `🔄 OBTENIENDO detalles HÍBRIDO para: ${nombre}, ${mes}/${anio}, ${quincena}`
-  );
-
-  try {
-    // Obtener el resumen simple primero
-    const resumenSimple = calcularCostosSimple(nombre, mes, anio, quincena);
-
-    if (
-      !resumenSimple ||
-      !resumenSimple.metadatos ||
-      resumenSimple.metadatos.numeroRegistros === 0
-    ) {
-      Logger.log(
-        `⚠️ No hay registros para ${nombre} en el período especificado`
-      );
-      return {
-        detalleRegistros: [],
-        metadatos: {
-          nombre: nombre,
-          periodo: `${mes}/${anio}`,
-          quincena: quincena,
-          totalRegistros: 0,
-          mensaje: "No se encontraron registros",
-        },
-      };
-    }
-
-    // Obtener solo la información básica de las filas de registros
-    const sheetRegistros = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-      "RegistrosProcedimientos"
-    );
-    const registrosData = sheetRegistros.getDataRange().getValues();
-
-    const nombreNormalizado = nombre.toUpperCase();
-    const detalleRegistros = [];
-    let registrosEncontrados = 0;
-
-    // Buscar solo las filas que coincidan para obtener fechas y información básica
-    for (let i = 1; i < registrosData.length; i++) {
-      const fila = registrosData[i];
-      const nombrePersona = fila[0];
-      const fechaRegistro = fila[1];
-
-      if (!nombrePersona || !fechaRegistro) continue;
-
-      const nombreRegistroNormalizado = nombrePersona.toString().toUpperCase();
-      if (nombreRegistroNormalizado !== nombreNormalizado) continue;
-
-      const fecha = new Date(fechaRegistro);
-      if (
-        fecha.getMonth() + 1 !== parseInt(mes) ||
-        fecha.getFullYear() !== parseInt(anio)
-      )
-        continue;
-
-      if (quincena !== "completo") {
-        const dia = fecha.getDate();
-        if (quincena === "1-15" && dia > 15) continue;
-        if (quincena === "16-31" && dia <= 15) continue;
-      }
-
-      registrosEncontrados++;
-      const esSabado = fecha.getDay() === 6;
-      const fechaFormateada = fecha.toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-
-      // Crear información básica de procedimientos desde el resumen
-      const procedimientosBasicos = [];
-      const datosCategoria = esSabado ? resumenSimple.sab : resumenSimple.lv;
-
-      // Solo incluir los procedimientos más importantes para reducir tamaño
-      const procedimientosImportantes = [
-        "gastro_regular",
-        "gastro_medismart",
-        "gastocolono_regular",
-        "consulta_medismart",
-      ];
-
-      procedimientosImportantes.forEach((key) => {
-        const item = datosCategoria[key];
-        if (item && item.cantidad > 0) {
-          procedimientosBasicos.push({
-            nombre: item.nombre,
-            cantidad: Math.round(item.cantidad / registrosEncontrados), // Aproximar por registro
-            costoUnitario: item.costo_unitario,
-            total: Math.round(item.total_con_iva / registrosEncontrados), // Aproximar por registro
-          });
-        }
-      });
-
-      detalleRegistros.push({
-        fila: i + 1,
-        fecha: fechaFormateada,
-        fechaOriginal: fecha.toISOString(),
-        persona: nombrePersona,
-        esSabado: esSabado,
-        procedimientos: procedimientosBasicos,
-        subtotalRegistro: Math.round(
-          resumenSimple.totales.total_con_iva / registrosEncontrados
-        ),
-      });
-    }
-
-    const resultado = {
-      detalleRegistros: detalleRegistros,
-      metadatos: {
-        nombre: nombre,
-        periodo: `${mes}/${anio}`,
-        quincena: quincena,
-        totalRegistros: detalleRegistros.length,
-        mensaje: "Detalles híbridos generados correctamente",
-      },
-    };
-
-    const tamanoJson = JSON.stringify(resultado).length;
-    Logger.log(
-      `✅ Detalles HÍBRIDOS obtenidos - ${detalleRegistros.length} registros, ${tamanoJson} caracteres`
-    );
-
-    return resultado;
-  } catch (error) {
-    Logger.log(`❌ Error en detalles híbridos: ${error.message}`);
-    throw error;
-  }
-}
-
-// ===== FUNCIÓN SIMPLIFICADA: Obtener detalles básicos con lógica idéntica a calcularCostos =====
-function obtenerDetalleRegistrosSimplificado(nombre, mes, anio, quincena) {
-  Logger.log(
-    `🔄 OBTENIENDO detalles SIMPLIFICADO para: ${nombre}, ${mes}/${anio}, ${quincena}`
-  );
-
-  try {
-    // Usar exactamente la misma lógica que calcularCostos pero solo obtener fechas
-    const sheetRegistros = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-      "RegistrosProcedimientos"
-    );
-    const registrosData = sheetRegistros.getDataRange().getValues();
-
-    Logger.log(
-      `📊 Total de filas en RegistrosProcedimientos: ${registrosData.length}`
-    );
-
-    const nombreNormalizado = nombre.toUpperCase();
-    Logger.log(`🔍 Nombre normalizado para búsqueda: "${nombreNormalizado}"`);
-
-    const detalleRegistros = [];
-    let registrosEncontrados = 0;
-
-    // Buscar registros usando EXACTAMENTE la misma lógica que calcularCostos
-    for (let i = 1; i < registrosData.length; i++) {
-      const fila = registrosData[i];
-      const nombrePersona = fila[0];
-      const fechaRegistro = fila[1];
-
-      if (!nombrePersona || !fechaRegistro) continue;
-
-      // Normalizar nombre del registro IGUAL que en calcularCostos
-      const nombreRegistroNormalizado = nombrePersona.toString().toUpperCase();
-
-      // Verificar coincidencia exacta del nombre IGUAL que en calcularCostos
-      if (nombreRegistroNormalizado !== nombreNormalizado) continue;
-
-      // Verificar fecha IGUAL que en calcularCostos
-      const fecha = new Date(fechaRegistro);
-      if (
-        fecha.getMonth() + 1 !== parseInt(mes) ||
-        fecha.getFullYear() !== parseInt(anio)
-      )
-        continue;
-
-      // Verificar quincena IGUAL que en calcularCostos
-      if (quincena !== "completo") {
-        const dia = fecha.getDate();
-        if (quincena === "1-15" && dia > 15) continue;
-        if (quincena === "16-31" && dia <= 15) continue;
-      }
-
-      registrosEncontrados++;
-      Logger.log(
-        `✅ REGISTRO VÁLIDO #${registrosEncontrados} - Fila ${
-          i + 1
-        }: ${nombrePersona}, ${fecha.toDateString()}`
-      );
-
-      const esSabado = fecha.getDay() === 6;
-      const fechaFormateada = fecha.toLocaleDateString("es-ES", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      });
-
-      // Crear registro básico SIN procedimientos complejos por ahora
-      detalleRegistros.push({
-        fila: i + 1,
-        fecha: fechaFormateada,
-        fechaOriginal: fecha.toISOString(),
-        persona: nombrePersona,
-        esSabado: esSabado,
-        procedimientos: [
-          {
-            nombre: "Información disponible en resumen general",
-            cantidad: 1,
-            costoUnitario: 0,
-            total: 0,
-          },
-        ],
-        subtotalRegistro: 0,
-      });
-    }
-
-    const resultado = {
-      detalleRegistros: detalleRegistros,
-      metadatos: {
-        nombre: nombre,
-        periodo: `${mes}/${anio}`,
-        quincena: quincena,
-        totalRegistros: detalleRegistros.length,
-        mensaje: `Encontrados ${detalleRegistros.length} registros usando lógica idéntica a calcularCostos`,
-      },
-    };
-
-    const tamanoJson = JSON.stringify(resultado).length;
-    Logger.log(
-      `✅ Detalles SIMPLIFICADOS obtenidos - ${detalleRegistros.length} registros, ${tamanoJson} caracteres`
-    );
-
-    return resultado;
-  } catch (error) {
-    Logger.log(`❌ Error en detalles simplificados: ${error.message}`);
-    throw error;
-  }
-}
-
-// ===== FUNCIÓN DE DIAGNÓSTICO: Verificar datos paso a paso =====
-function diagnosticarDetalleRegistros(nombre, mes, anio, quincena) {
-  Logger.log(
-    `🔍 DIAGNÓSTICO DETALLADO para: ${nombre}, ${mes}/${anio}, ${quincena}`
-  );
-
-  try {
-    // PASO 1: Verificar el resumen simple
-    Logger.log("📊 PASO 1: Verificando resumen simple...");
-    const resumenSimple = calcularCostosSimple(nombre, mes, anio, quincena);
-
-    if (!resumenSimple) {
-      Logger.log("❌ ERROR: resumenSimple es null");
-      return "Error: No se pudo obtener resumen simple";
-    }
-
-    Logger.log(
-      `✅ Resumen obtenido: ${resumenSimple.metadatos.numeroRegistros} registros reportados`
-    );
-    Logger.log(`💰 Total: $${resumenSimple.totales.total_con_iva}`);
-
-    // PASO 2: Verificar acceso a la hoja
-    Logger.log("📋 PASO 2: Verificando acceso a RegistrosProcedimientos...");
-    const sheetRegistros = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-      "RegistrosProcedimientos"
-    );
-
-    if (!sheetRegistros) {
-      Logger.log(
-        "❌ ERROR: No se pudo acceder a la hoja RegistrosProcedimientos"
-      );
-      return "Error: Hoja no encontrada";
-    }
-
-    const registrosData = sheetRegistros.getDataRange().getValues();
-    Logger.log(`✅ Hoja accesible: ${registrosData.length} filas totales`);
-
-    // PASO 3: Verificar normalización de nombre
-    const nombreNormalizado = nombre.toUpperCase();
-    Logger.log(`🔤 PASO 3: Nombre normalizado: "${nombreNormalizado}"`);
-
-    // PASO 4: Buscar coincidencias paso a paso
-    Logger.log("🔍 PASO 4: Buscando coincidencias...");
-    let coincidenciasNombre = 0;
-    let coincidenciasFecha = 0;
-    let coincidenciasQuincena = 0;
-
-    for (let i = 1; i < registrosData.length; i++) {
-      const fila = registrosData[i];
-      const nombrePersona = fila[0];
-      const fechaRegistro = fila[1];
-
-      if (!nombrePersona || !fechaRegistro) continue;
-
-      const nombreRegistroNormalizado = nombrePersona.toString().toUpperCase();
-
-      // Verificar nombre
-      if (nombreRegistroNormalizado === nombreNormalizado) {
-        coincidenciasNombre++;
-        Logger.log(`   ✅ Fila ${i + 1}: Nombre coincide - "${nombrePersona}"`);
-
-        // Verificar fecha
-        const fecha = new Date(fechaRegistro);
-        Logger.log(`      📅 Fecha: ${fecha.toString()}`);
-        Logger.log(
-          `      📅 Mes: ${fecha.getMonth() + 1}, Año: ${fecha.getFullYear()}`
-        );
-
-        if (
-          fecha.getMonth() + 1 === parseInt(mes) &&
-          fecha.getFullYear() === parseInt(anio)
-        ) {
-          coincidenciasFecha++;
-          Logger.log(`      ✅ Fecha coincide`);
-
-          // Verificar quincena
-          if (quincena === "completo") {
-            coincidenciasQuincena++;
-            Logger.log(`      ✅ Quincena completa - REGISTRO VÁLIDO`);
-          } else {
-            const dia = fecha.getDate();
-            if (
-              (quincena === "1-15" && dia <= 15) ||
-              (quincena === "16-31" && dia > 15)
-            ) {
-              coincidenciasQuincena++;
-              Logger.log(
-                `      ✅ Quincena ${quincena}, día ${dia} - REGISTRO VÁLIDO`
-              );
-            } else {
-              Logger.log(
-                `      ❌ Quincena no coincide: ${quincena}, día ${dia}`
-              );
-            }
-          }
-        } else {
-          Logger.log(
-            `      ❌ Fecha no coincide: esperado ${mes}/${anio}, encontrado ${
-              fecha.getMonth() + 1
-            }/${fecha.getFullYear()}`
-          );
-        }
-      }
-    }
-
-    Logger.log(`\n🎯 RESUMEN DIAGNÓSTICO:`);
-    Logger.log(`   👤 Coincidencias de nombre: ${coincidenciasNombre}`);
-    Logger.log(`   📅 Coincidencias de fecha: ${coincidenciasFecha}`);
-    Logger.log(`   📋 Registros válidos finales: ${coincidenciasQuincena}`);
-    Logger.log(
-      `   📊 Registros reportados en resumen: ${resumenSimple.metadatos.numeroRegistros}`
-    );
-
-    return `Diagnóstico completado - Ver logs. Registros válidos: ${coincidenciasQuincena}`;
-  } catch (error) {
-    Logger.log(`❌ Error en diagnóstico: ${error.message}`);
-    Logger.log(`Stack: ${error.stack}`);
-    throw error;
-  }
-}
-
-// ===== FUNCIÓN DE COMPARACIÓN: Encontrar diferencias entre calcularCostos y búsqueda directa =====
-function compararLogicas(nombre, mes, anio, quincena) {
-  Logger.log(
-    `🔍 COMPARANDO lógicas para: ${nombre}, ${mes}/${anio}, ${quincena}`
-  );
-
-  try {
-    // MÉTODO 1: Usar calcularCostos (que SÍ funciona)
-    Logger.log("📊 MÉTODO 1: Ejecutando calcularCostos...");
-    const resultadoCalcular = calcularCostos(nombre, mes, anio, quincena);
-    const registrosEnCalcular = resultadoCalcular.detalleRegistros
-      ? resultadoCalcular.detalleRegistros.length
-      : 0;
-    Logger.log(`✅ calcularCostos encontró: ${registrosEnCalcular} registros`);
-
-    // MÉTODO 2: Buscar directamente (que NO funciona)
-    Logger.log("🔍 MÉTODO 2: Búsqueda directa...");
-    const sheetRegistros = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-      "RegistrosProcedimientos"
-    );
-    const registrosData = sheetRegistros.getDataRange().getValues();
-
-    const nombreNormalizado = nombre.toUpperCase();
-    Logger.log(`🔤 Nombre normalizado: "${nombreNormalizado}"`);
-
-    let registrosDirectos = 0;
-    let muestraDatos = [];
-
-    // Mostrar muestra de los primeros 10 registros para comparar
-    Logger.log("📋 MUESTRA DE DATOS EN LA HOJA:");
-    for (let i = 1; i < Math.min(11, registrosData.length); i++) {
-      const fila = registrosData[i];
-      const nombrePersona = fila[0];
-      const fechaRegistro = fila[1];
-
-      Logger.log(`   Fila ${i + 1}: "${nombrePersona}" - ${fechaRegistro}`);
-
-      if (nombrePersona) {
-        const nombreNorm = nombrePersona.toString().toUpperCase();
-        Logger.log(`      Normalizado: "${nombreNorm}"`);
-        Logger.log(
-          `      ¿Coincide con "${nombreNormalizado}"? ${
-            nombreNorm === nombreNormalizado
-          }`
-        );
-
-        if (nombreNorm === nombreNormalizado) {
-          Logger.log(`      ⭐ COINCIDENCIA ENCONTRADA!`);
-          muestraDatos.push({
-            fila: i + 1,
-            nombre: nombrePersona,
-            fecha: fechaRegistro,
-          });
-        }
-      }
-    }
-
-    // Buscar en toda la hoja
-    for (let i = 1; i < registrosData.length; i++) {
-      const fila = registrosData[i];
-      const nombrePersona = fila[0];
-      const fechaRegistro = fila[1];
-
-      if (!nombrePersona || !fechaRegistro) continue;
-
-      const nombreRegistroNormalizado = nombrePersona.toString().toUpperCase();
-      if (nombreRegistroNormalizado !== nombreNormalizado) continue;
-
-      const fecha = new Date(fechaRegistro);
-      if (
-        fecha.getMonth() + 1 !== parseInt(mes) ||
-        fecha.getFullYear() !== parseInt(anio)
-      )
-        continue;
-
-      if (quincena !== "completo") {
-        const dia = fecha.getDate();
-        if (quincena === "1-15" && dia > 15) continue;
-        if (quincena === "16-31" && dia <= 15) continue;
-      }
-
-      registrosDirectos++;
-      Logger.log(
-        `✅ REGISTRO DIRECTO #${registrosDirectos} - Fila ${
-          i + 1
-        }: ${nombrePersona}, ${fecha.toDateString()}`
-      );
-    }
-
-    Logger.log(`\n🎯 COMPARACIÓN FINAL:`);
-    Logger.log(
-      `   📊 calcularCostos encontró: ${registrosEnCalcular} registros`
-    );
-    Logger.log(
-      `   🔍 Búsqueda directa encontró: ${registrosDirectos} registros`
-    );
-    Logger.log(
-      `   📋 Coincidencias de nombre en muestra: ${muestraDatos.length}`
-    );
-
-    if (muestraDatos.length > 0) {
-      Logger.log(`   📋 Datos de coincidencias:`);
-      muestraDatos.forEach((item) => {
-        Logger.log(`      Fila ${item.fila}: "${item.nombre}" - ${item.fecha}`);
-      });
-    }
-
-    return {
-      calcularCostos: registrosEnCalcular,
-      busquedaDirecta: registrosDirectos,
-      coincidenciasNombre: muestraDatos.length,
-      muestra: muestraDatos,
-    };
-  } catch (error) {
-    Logger.log(`❌ Error en comparación: ${error.message}`);
-    Logger.log(`Stack: ${error.stack}`);
-    throw error;
-  }
-}
-
-// ===== FUNCIÓN DE VERIFICACIÓN: Chequear parámetros exactos =====
-function verificarParametros(nombre, mes, anio, quincena) {
-  Logger.log(`🔍 VERIFICANDO parámetros recibidos:`);
-  Logger.log(`   nombre: "${nombre}" (tipo: ${typeof nombre})`);
-  Logger.log(`   mes: "${mes}" (tipo: ${typeof mes})`);
-  Logger.log(`   anio: "${anio}" (tipo: ${typeof anio})`);
-  Logger.log(`   quincena: "${quincena}" (tipo: ${typeof quincena})`);
-
-  // Conversiones
-  const mesInt = parseInt(mes);
-  const anioInt = parseInt(anio);
-  Logger.log(`   mes convertido: ${mesInt} (tipo: ${typeof mesInt})`);
-  Logger.log(`   anio convertido: ${anioInt} (tipo: ${typeof anioInt})`);
-
-  // Probar con estos parámetros exactos en calcularCostos
-  Logger.log(`\n🧪 Probando calcularCostos con parámetros exactos...`);
-  try {
-    const resultado = calcularCostos(nombre, mesInt, anioInt, quincena);
-    Logger.log(
-      `✅ calcularCostos exitoso: ${
-        resultado.detalleRegistros ? resultado.detalleRegistros.length : 0
-      } registros`
-    );
-
-    // Mostrar algunos detalles
-    if (resultado.detalleRegistros && resultado.detalleRegistros.length > 0) {
-      Logger.log(`📋 Muestra de registros encontrados por calcularCostos:`);
-      resultado.detalleRegistros.slice(0, 3).forEach((reg, index) => {
-        Logger.log(
-          `   ${index + 1}. Fila ${reg.fila}: ${reg.persona} - ${reg.fecha}`
-        );
-      });
-    }
-  } catch (error) {
-    Logger.log(`❌ Error en calcularCostos: ${error.message}`);
-  }
-
-  return {
-    parametros: {
-      nombre: nombre,
-      mes: mes,
-      anio: anio,
-      quincena: quincena,
-      mesInt: mesInt,
-      anioInt: anioInt,
-    },
-    tipos: {
-      nombre: typeof nombre,
-      mes: typeof mes,
-      anio: typeof anio,
-      quincena: typeof quincena,
-    },
-  };
-}
-
-// ===== FUNCIÓN PARA PROBAR EL DIAGNÓSTICO =====
-function probarDiagnosticoFiltrado() {
-  Logger.log("🧪 === PRUEBA DE DIAGNÓSTICO DE FILTRADO ===");
-
-  // Probar con diferentes nombres
-  const nombresPrueba = [
-    "Anest Manuel",
-    "Anest Nicole",
-    "ANEST MANUEL",
-    "ANEST NICOLE",
-  ];
-
-  nombresPrueba.forEach((nombre) => {
-    diagnosticarFiltradoPersonal(nombre);
-  });
 }

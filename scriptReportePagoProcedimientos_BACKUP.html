@@ -1,32 +1,29 @@
 <script>
-  // ================== INICIALIZACIÓN Y CARGA INICIAL MEJORADA ==================
+  // ================== INICIALIZACIÓN Y CARGA INICIAL ==================
   document.addEventListener('DOMContentLoaded', function () {
-    console.log('🚀 Iniciando aplicación de reporte de procedimientos');
-
     // Inicializar selectores de fecha
     inicializarSelectoresFecha();
-
+    
     // Event listeners para actualización de descripción
-    ['mes', 'anio', 'quincena'].forEach(function (id) {
+    ['mes', 'anio', 'quincena'].forEach(function(id) {
       const elemento = document.getElementById(id);
       if (elemento) {
-        elemento.addEventListener('change', function () {
+        elemento.addEventListener('change', function() {
           actualizarDescripcionSeleccion();
         });
       }
     });
 
-    // Cargar personal con mejor manejo de errores
-    console.log('📋 Cargando lista de personal...');
+    // Cargar personal
     google.script.run
       .withSuccessHandler(function (personalList) {
         console.log('=== CARGA DE PERSONAL ===');
         console.log('Lista de personal recibida:', personalList);
         console.log('Cantidad de personal:', personalList.length);
-
+        
         const selectDoctor = document.getElementById('doctor');
         selectDoctor.innerHTML = '<option disabled selected value="">Seleccione un nombre</option>';
-
+        
         if (personalList.length === 0) {
           selectDoctor.innerHTML += '<option disabled>No hay personal disponible</option>';
           mostrarMensaje("⚠️ No se pudo cargar la lista de personal", "warning");
@@ -100,7 +97,7 @@
     const anioFin = anioActual + 1;
 
     anioInput.innerHTML = '<option disabled value="">Seleccione un año</option>';
-
+    
     for (let anio = anioFin; anio >= anioInicio; anio--) {
       const option = document.createElement('option');
       option.value = anio;
@@ -196,12 +193,12 @@
       return "Ninguna - Complete todos los campos";
     }
 
-    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", 
+                   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const nombreMes = meses[parseInt(mes) - 1];
-
+    
     let descripcionQuincena;
-    switch (quincena) {
+    switch(quincena) {
       case "1-15":
         descripcionQuincena = "Primera quincena (1-15)";
         break;
@@ -227,7 +224,7 @@
     mensaje += `Mes: ${mes ? '✅ ' + mes : '❌ No seleccionado'}\n`;
     mensaje += `Año: ${anio ? '✅ ' + anio : '❌ No seleccionado'}\n`;
     mensaje += `Quincena: ${quincena ? '✅ ' + quincena : '❌ No seleccionado'}\n\n`;
-
+    
     if (mes && anio && quincena) {
       mensaje += `✅ Selección válida: ${obtenerDescripcionSeleccionActual()}`;
       mostrarMensaje("✅ Selección de fecha válida.", "success");
@@ -260,12 +257,12 @@
   // ================== CARGA DE EMAIL PERSONAL ==================
   function cargarEmailPersonal() {
     const selectedPersonal = document.getElementById('doctor').value;
-
+    
     if (!selectedPersonal) {
       mostrarMensaje("Por favor, seleccione un personal primero.", "error");
       return;
     }
-
+    
     google.script.run
       .withSuccessHandler(function (email) {
         document.getElementById('emailRecipient').value = email;
@@ -327,306 +324,144 @@
     return html;
   }
 
-  // ✅ NUEVA FUNCIÓN: Generar detalle de registros
-  function generarDetalleRegistros(detalleRegistros, nombrePersonal) {
-    console.log('=== GENERANDO DETALLE DE REGISTROS ===');
-    console.log('detalleRegistros:', detalleRegistros);
-    console.log('nombrePersonal:', nombrePersonal);
-
-    if (!detalleRegistros || !Array.isArray(detalleRegistros) || detalleRegistros.length === 0) {
-      console.log('⚠️ No hay detalles de registros para mostrar');
-      return '';
-    }
-
-    try {
-      let html = `
-        <div class="detalle-registros-section">
-          <h3>📋 Detalle de Registros Encontrados para ${nombrePersonal || 'Personal'}</h3>
-          <p class="detalle-info">Total de registros procesados: <strong>${detalleRegistros.length}</strong></p>
-          
-          <div class="registros-container">
-      `;
-
-      // Ordenar registros por fecha con validación
-      let registrosOrdenados;
-      try {
-        registrosOrdenados = detalleRegistros.sort((a, b) => {
-          const fechaA = a.fechaOriginal ? new Date(a.fechaOriginal) : new Date(0);
-          const fechaB = b.fechaOriginal ? new Date(b.fechaOriginal) : new Date(0);
-          return fechaA - fechaB;
-        });
-      } catch (error) {
-        console.error('Error ordenando registros:', error);
-        registrosOrdenados = detalleRegistros; // Usar sin ordenar si hay error
-      }
-
-      registrosOrdenados.forEach((registro, index) => {
-        const numeroRegistro = index + 1;
-        const tipoFondo = registro.esSabado ? 'registro-sabado' : 'registro-lv';
-
-        html += `
-        <div class="registro-item ${tipoFondo}">
-          <div class="registro-header">
-            <span class="registro-numero">#${numeroRegistro}</span>
-            <span class="registro-fila">Fila ${registro.fila}</span>
-            <span class="registro-fecha">${registro.fecha}</span>
-            <span class="registro-tipo">${registro.esSabado ? '🗓️ Sábado' : '📅 L-V'}</span>
-          </div>
-          
-          <div class="procedimientos-lista">
-            <h4>Procedimientos realizados:</h4>
-            <table class="tabla-procedimientos-detalle">
-              <thead>
-                <tr>
-                  <th>Procedimiento</th>
-                  <th>Cant.</th>
-                  <th>Costo Unit.</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-      `;
-
-        // ✅ VERIFICAR si hay procedimientos antes de iterar
-        if (registro.procedimientos && Array.isArray(registro.procedimientos)) {
-          registro.procedimientos.forEach(proc => {
-            html += `
-            <tr>
-              <td class="text-left">${proc.nombre}</td>
-              <td>${proc.cantidad}</td>
-              <td>₡${formatearMoneda(proc.costoUnitario)}</td>
-              <td>₡${formatearMoneda(proc.total)}</td>
-            </tr>
-          `;
-          });
-        } else {
-          // Si no hay procedimientos (datos de prueba), mostrar mensaje
-          html += `
-            <tr>
-              <td colspan="4" class="text-center">
-                <em>📝 ${registro.procedimientosResumen || 'Datos de prueba - sin procedimientos detallados'}</em>
-              </td>
-            </tr>
-          `;
-        }
-
-        html += `
-              </tbody>
-              <tfoot>
-                <tr class="total-registro">
-                  <td colspan="3"><strong>Total del registro:</strong></td>
-                  <td><strong>₡${formatearMoneda(registro.subtotalRegistro || 0)}</strong></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      `;
-      });
-
-      // Calcular estadísticas
-      const totalRegistrosSabado = registrosOrdenados.filter(r => r.esSabado).length;
-      const totalRegistrosLV = registrosOrdenados.length - totalRegistrosSabado;
-      const totalGeneral = registrosOrdenados.reduce((sum, r) => sum + r.subtotalRegistro, 0);
-
-      html += `
-        </div>
-        
-        <div class="estadisticas-registros">
-          <h4>📊 Estadísticas del Período</h4>
-          <div class="stats-grid">
-            <div class="stat-item">
-              <span class="stat-label">📅 Registros L-V:</span>
-              <span class="stat-value">${totalRegistrosLV}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">🗓️ Registros Sábado:</span>
-              <span class="stat-value">${totalRegistrosSabado}</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-label">💰 Total Período:</span>
-              <span class="stat-value">₡${formatearMoneda(totalGeneral)}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-      return html;
-    } catch (error) {
-      console.error('Error generando detalle de registros:', error);
-      return `
-        <div class="detalle-registros-section">
-          <h3>📋 Detalle de Registros</h3>
-          <p class="error-message">Error al mostrar el detalle de registros: ${error.message}</p>
-        </div>
-      `;
-    }
-  }
-
   function calcular() {
-    // 🔧 CAPTURAR PARÁMETROS para evitar problemas de scope
-    const parametros = {
-      doctor: document.getElementById('doctor').value,
-      mes: parseInt(document.getElementById('mes').value),
-      anio: parseInt(document.getElementById('anio').value),
-      quincena: document.getElementById('quincena').value
-    };
+    const doctor = document.getElementById('doctor').value;
+    const mes = document.getElementById('mes').value;
+    const anio = document.getElementById('anio').value;
+    const quincena = document.getElementById('quincena').value;
 
     // Log de debugging
     console.log('=== DEBUGGING CALCULAR ===');
-    console.log('🔧 Parámetros capturados:', parametros);
+    console.log('Doctor seleccionado:', doctor);
+    console.log('Mes:', mes);
+    console.log('Año:', anio);
+    console.log('Quincena:', quincena);
 
     // Usar la función de validación mejorada
-    if (!validarEntradas(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena)) {
+    if (!validarEntradas(doctor, mes, anio, quincena)) {
       return;
     }
 
     // Mostrar mensaje de carga
-    mostrarMensaje("🔍 Buscando registros para " + parametros.doctor + "...", "info");
-
+    mostrarMensaje("🔍 Buscando registros para " + doctor + "...", "info");
+    
     // Limpiar resultados anteriores
     const divResultado = document.getElementById('resultado');
     if (divResultado) {
       divResultado.innerHTML = '<p>Cargando datos...</p>';
     }
 
-    // ✅ NUEVA ESTRATEGIA: Dividir en dos llamadas separadas
-    let datosResumen = null;
-    let detalleRegistros = null;
+    // ✅ TIMEOUT PARA EVITAR CARGA INFINITA
+    const timeoutId = setTimeout(() => {
+      mostrarMensaje("⏰ El cálculo está tomando demasiado tiempo. Verificando datos...", "warning");
+      console.log('TIMEOUT: El cálculo excedió 30 segundos');
+    }, 30000);
 
-    console.log('📋 Parámetros capturados:', parametros);
-
-    // PASO 1: Obtener resumen sin detalles (más pequeño)
     google.script.run
       .withSuccessHandler(function (resumen) {
-        console.log('=== PASO 1: RESUMEN RECIBIDO ===');
-        console.log('Datos resumen:', resumen);
-
+        clearTimeout(timeoutId); // ✅ Limpiar timeout
+        
+        console.log('=== RESPUESTA DEL SERVIDOR ===');
+        console.log('Datos recibidos:', resumen);
+        console.log('Tiene datos LV?:', !!resumen.lv);
+        console.log('Tiene datos Sab?:', !!resumen.sab);
+        console.log('Totales:', resumen.totales);
+        
+        // ✅ VERIFICACIÓN MEJORADA DE DATOS
         if (!resumen) {
-          mostrarMensaje("❌ Error: No se recibieron datos del resumen", "error");
+          mostrarMensaje("❌ No se recibieron datos del servidor.", "error");
+          document.getElementById('resultado').innerHTML = '<p class="no-data">Error: No se recibieron datos.</p>';
           return;
         }
 
-        datosResumen = resumen;
-        mostrarMensaje("✅ Resumen obtenido. Obteniendo detalles...", "info");
+        if (!resumen.totales) {
+          mostrarMensaje("❌ Los datos recibidos no tienen la estructura esperada.", "error");
+          document.getElementById('resultado').innerHTML = '<p class="no-data">Error: Estructura de datos inválida.</p>';
+          return;
+        }
 
-        // PASO 2: Obtener detalles de registros
-        google.script.run
-          .withSuccessHandler(function (detalles) {
-            console.log('=== PASO 2: DETALLES RECIBIDOS ===');
-            console.log('Detalles:', detalles);
+        // Verificar si los totales son cero
+        if (resumen.totales.subtotal === 0) {
+          mostrarMensaje("⚠️ No se encontraron procedimientos registrados para " + doctor + " en el período seleccionado.", "warning");
+          document.getElementById('resultado').innerHTML = '<p class="no-data">No hay procedimientos registrados en este período.</p>';
+          return;
+        }
 
-            if (detalles && detalles.detalleRegistros) {
-              detalleRegistros = detalles.detalleRegistros;
-              console.log(`✅ ${detalleRegistros.length} registros detallados obtenidos`);
-            }
+        // ✅ PROCESAMIENTO DE DATOS MEJORADO
+        const divResultado = document.getElementById('resultado');
+        let htmlResultado = '';
 
-            // Combinar datos y mostrar resultado
-            const datosCompletos = {
-              ...datosResumen,
-              detalleRegistros: detalleRegistros || []
-            };
+        // Asegura que ambos objetos existan aunque estén vacíos
+        const resumenLV = resumen.lv || {};
+        const resumenSab = resumen.sab || {};
 
-            mostrarResultadoCompleto(datosCompletos, parametros.doctor);
-          })
-          .withFailureHandler(function (error) {
-            console.error('❌ Error obteniendo detalles:', error);
-            // Continuar sin detalles
-            const datosCompletos = {
-              ...datosResumen,
-              detalleRegistros: []
-            };
-            mostrarResultadoCompleto(datosCompletos, parametros.doctor);
-          })
-          .obtenerDetalleRegistrosSimplificado(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena);
+        let totalSubtotalLV = 0;
+        let totalIVALV = 0;
+        let totalConIVALV = 0;
+        for (const key in resumenLV) {
+          if (resumenLV[key]) {
+            totalSubtotalLV += resumenLV[key].subtotal || 0;
+            totalIVALV += resumenLV[key].iva || 0;
+            totalConIVALV += resumenLV[key].total_con_iva || 0;
+          }
+        }
+
+        let totalSubtotalSab = 0;
+        let totalIVASab = 0;
+        let totalConIVASab = 0;
+        for (const key in resumenSab) {
+          if (resumenSab[key]) {
+            totalSubtotalSab += resumenSab[key].subtotal || 0;
+            totalIVASab += resumenSab[key].iva || 0;
+            totalConIVASab += resumenSab[key].total_con_iva || 0;
+          }
+        }
+
+        htmlResultado += generarTablaHtml("Reporte de Lunes a Viernes", resumenLV, totalSubtotalLV, totalIVALV, totalConIVALV);
+        htmlResultado += generarTablaHtml("Reporte de Sábados", resumenSab, totalSubtotalSab, totalIVASab, totalConIVASab);
+
+        divResultado.innerHTML = htmlResultado;
+
+        // ACTUALIZA LOS TOTALES PARA EL DESCUENTO
+        mostrarTotalesReporte(resumen.totales.subtotal, resumen.totales.total_con_iva);
+
+        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        const selectedMonthName = monthNames[parseInt(mes) - 1];
+        const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+
+        document.getElementById('reportTitle').textContent = `Reporte de Procedimientos y Consultas - ${doctor} - ${selectedMonthName} ${anio} (${quincenaText})`;
+
+        document.getElementById('action-section').style.display = 'block';
+        document.getElementById('emailMessage').textContent = '';
+        
+        // Mensaje de éxito
+        mostrarMensaje("✅ Reporte generado exitosamente.", "success");
       })
       .withFailureHandler(function (error) {
-        console.error('❌ Error obteniendo resumen:', error);
-        mostrarMensaje("❌ Error al obtener datos: " + error.message, "error");
-        document.getElementById('resultado').innerHTML = '<p class="error-message">Error: ' + error.message + '</p>';
-      })
-      .calcularCostosSimple(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena);
-  }
-
-  // ✅ NUEVA FUNCIÓN para mostrar resultado completo
-  function mostrarResultadoCompleto(resumen, doctor) {
-    console.log('=== MOSTRANDO RESULTADO COMPLETO ===');
-    console.log('Datos finales:', resumen);
-
-    // Verificar si los totales son cero
-    if (!resumen.totales || resumen.totales.subtotal === 0) {
-      mostrarMensaje("⚠️ No se encontraron procedimientos registrados para " + doctor + " en el período seleccionado.", "warning");
-      document.getElementById('resultado').innerHTML = '<p class="no-data">No hay procedimientos registrados en este período.</p>';
-      return;
-    }
-
-    // ✅ PROCESAMIENTO DE DATOS MEJORADO
-    const divResultado = document.getElementById('resultado');
-    let htmlResultado = '';
-
-    // Asegura que ambos objetos existan aunque estén vacíos
-    const resumenLV = resumen.lv || {};
-    const resumenSab = resumen.sab || {};
-
-    let totalSubtotalLV = 0;
-    let totalIVALV = 0;
-    let totalConIVALV = 0;
-    for (const key in resumenLV) {
-      if (resumenLV[key]) {
-        totalSubtotalLV += resumenLV[key].subtotal || 0;
-        totalIVALV += resumenLV[key].iva || 0;
-        totalConIVALV += resumenLV[key].total_con_iva || 0;
-      }
-    }
-
-    let totalSubtotalSab = 0;
-    let totalIVASab = 0;
-    let totalConIVASab = 0;
-    for (const key in resumenSab) {
-      if (resumenSab[key]) {
-        totalSubtotalSab += resumenSab[key].subtotal || 0;
-        totalIVASab += resumenSab[key].iva || 0;
-        totalConIVASab += resumenSab[key].total_con_iva || 0;
-      }
-    }
-
-    htmlResultado += generarTablaHtml("Reporte de Lunes a Viernes", resumenLV, totalSubtotalLV, totalIVALV, totalConIVALV);
-    htmlResultado += generarTablaHtml("Reporte de Sábados", resumenSab, totalSubtotalSab, totalIVASab, totalConIVASab);
-
-    // ✅ NUEVO: Agregar sección de detalle de registros (con manejo de errores)
-    try {
-      if (resumen.detalleRegistros && resumen.detalleRegistros.length > 0) {
-        console.log('Intentando generar detalle de registros...');
-        const detalleHtml = generarDetalleRegistros(resumen.detalleRegistros, doctor);
-        if (detalleHtml) {
-          htmlResultado += detalleHtml;
-          console.log('✅ Detalle de registros agregado exitosamente');
+        clearTimeout(timeoutId); // ✅ Limpiar timeout
+        
+        console.error('=== ERROR DEL SERVIDOR ===');
+        console.error('Error completo:', error);
+        console.error('Mensaje de error:', error.message);
+        console.error('Stack trace:', error.stack);
+        
+        // ✅ MANEJO DE ERRORES MEJORADO
+        let mensajeError = "❌ Error al calcular costos: ";
+        if (error.message) {
+          mensajeError += error.message;
+        } else {
+          mensajeError += "Error desconocido del servidor";
         }
-      } else {
-        console.log('⚠️ No hay detalleRegistros o está vacío');
-      }
-    } catch (error) {
-      console.error('❌ Error generando detalle de registros:', error);
-      // Continuar sin el detalle si hay error
-    }
-
-    divResultado.innerHTML = htmlResultado;
-
-    // ACTUALIZA LOS TOTALES PARA EL DESCUENTO
-    mostrarTotalesReporte(resumen.totales.subtotal, resumen.totales.total_con_iva);
-
-    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const selectedMonthName = monthNames[parseInt(document.getElementById('mes').value) - 1];
-    const quincenaText = document.getElementById('quincena').value === 'completo' ? 'Mes Completo' : `Quincena ${document.getElementById('quincena').value}`;
-
-    document.getElementById('reportTitle').textContent = `Reporte de Procedimientos y Consultas - ${doctor} - ${selectedMonthName} ${document.getElementById('anio').value} (${quincenaText})`;
-
-    document.getElementById('action-section').style.display = 'block';
-    document.getElementById('emailMessage').textContent = '';
-
-    // Mensaje de éxito
-    mostrarMensaje("✅ Reporte generado exitosamente.", "success");
+        
+        mostrarMensaje(mensajeError, "error");
+        
+        // Limpiar resultados en caso de error
+        const divResultado = document.getElementById('resultado');
+        if (divResultado) {
+          divResultado.innerHTML = '<p class="error-message">Error al cargar los datos. Por favor, intente nuevamente.</p>';
+        }
+      })
+      .calcularCostos(doctor, parseInt(mes), parseInt(anio), quincena); // ✅ ORDEN CORREGIDO: nombre, mes, año, quincena
   }
 
   // ================== DESCUENTO, EXTRA Y MOTIVO ==================
@@ -636,13 +471,13 @@
   function mostrarTotalesReporte(sub, total) {
     subtotalGlobal = sub || 0;  // ✅ Valor por defecto
     totalConIVAGlobal = total || 0;  // ✅ Valor por defecto
-
+    
     const subtotalOriginal = getElement('subtotalOriginal');
     const granTotal = getElement('granTotal');
-
+    
     if (subtotalOriginal) subtotalOriginal.textContent = formatearMoneda(subtotalGlobal);
     if (granTotal) granTotal.textContent = formatearMoneda(totalConIVAGlobal);
-
+    
     actualizarDescuentoYExtra();
   }
 
@@ -650,7 +485,7 @@
     const montoDescontarInput = getElement('montoDescontar');
     const motivoDescuentoInput = getElement('motivoDescuento');
     const montoExtraInput = getElement('montoExtra');
-
+    
     if (!montoDescontarInput || !motivoDescuentoInput || !montoExtraInput) return;
 
     const montoDescontar = Number(montoDescontarInput.value) || 0;
@@ -688,7 +523,7 @@
     } else if (montoExtra > 0) {
       comentario += (comentario ? ' | ' : '') + `Extra aplicado: ₡${formatearMoneda(montoExtra)}`;
     }
-
+    
     const comentarioEl = getElement('comentarioDescuento');
     if (comentarioEl) comentarioEl.textContent = comentario;
 
@@ -702,7 +537,7 @@
     const montoDescontarTextoEl = getElement('montoDescontarTexto');
     const montoExtraTextoEl = getElement('montoExtraTexto');
     const motivoDescuentoTextoEl = getElement('motivoDescuentoTexto');
-
+    
     if (montoDescontarTextoEl) {
       montoDescontarTextoEl.textContent = montoDescontar > 0 ? `Descuento aplicado: ₡${formatearMoneda(montoDescontar)}` : '';
     }
@@ -910,7 +745,7 @@
     } else if (tipo === 'warning') {
       mensajeDiv.classList.add('alert-warning');
     }
-
+    
     // Limpiar mensaje automáticamente después de un tiempo (excepto errores)
     if (tipo !== 'error') {
       setTimeout(() => {
@@ -930,11 +765,11 @@
         el.setAttribute('data-was-visible', 'true');
       }
     });
-
+    
     // Agregar clase para estilos de impresión
     document.body.classList.add('pdf-mode');
   }
-
+  
   function restaurarInputsPDF() {
     // Restaurar elementos ocultos
     const elementsToShow = document.querySelectorAll('[data-was-visible="true"]');
@@ -942,45 +777,45 @@
       el.style.display = '';
       el.removeAttribute('data-was-visible');
     });
-
+    
     // Remover clase de modo PDF
     document.body.classList.remove('pdf-mode');
   }
 
   // ================== CACHE DE ELEMENTOS DOM ==================
   let cachedElements = {};
-
+  
   function getElement(id) {
     if (!cachedElements[id]) {
       cachedElements[id] = document.getElementById(id);
     }
     return cachedElements[id];
   }
-
+  
   function formatearMoneda(cantidad) {
     return cantidad.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
   // ================== FUNCIONES DE DEBUGGING ==================
-
+  
   function diagnosticarCalculo() {
     const doctor = document.getElementById('doctor').value;
     const mes = document.getElementById('mes').value;
     const anio = document.getElementById('anio').value;
     const quincena = document.getElementById('quincena').value;
-
+    
     if (!doctor) {
       mostrarMensaje("Por favor, seleccione un doctor primero.", "error");
       return;
     }
-
+    
     mostrarMensaje("🔍 Diagnosticando problema de cálculo...", "info");
-
+    
     google.script.run
       .withSuccessHandler(function (resultado) {
         console.log('=== DIAGNÓSTICO COMPLETO ===');
         console.log('Resultado:', resultado);
-
+        
         let mensaje = `DIAGNÓSTICO PARA "${resultado.nombreBuscado}":\n\n`;
         mensaje += `Total registros encontrados: ${resultado.totalRegistros}\n`;
         if (resultado.registrosValidosFecha !== undefined) {
@@ -991,7 +826,7 @@
           mensaje += `Primer registro: ${resultado.primerRegistro}\n`;
           mensaje += `Último registro: ${resultado.ultimoRegistro}\n`;
         }
-
+        
         alert(mensaje);
         mostrarMensaje("✅ Diagnóstico completado. Revise la consola para detalles.", "success");
       })
@@ -1008,13 +843,13 @@
       mostrarMensaje("Búsqueda cancelada.", "info");
       return;
     }
-
+    
     mostrarMensaje("🔍 Buscando personal que contenga '" + nombreBuscar + "'...", "info");
-
+    
     google.script.run
       .withSuccessHandler(function (resultados) {
         console.log('Resultados de búsqueda:', resultados);
-
+        
         let mensaje = `RESULTADOS DE BÚSQUEDA PARA "${nombreBuscar}":\n\n`;
         if (resultados.coincidenciasExactas.length > 0) {
           mensaje += "COINCIDENCIAS EXACTAS:\n";
@@ -1023,18 +858,18 @@
           });
           mensaje += "\n";
         }
-
+        
         if (resultados.coincidenciasParciales.length > 0) {
           mensaje += "COINCIDENCIAS PARCIALES:\n";
           resultados.coincidenciasParciales.forEach((nombre, index) => {
             mensaje += `${index + 1}. ${nombre}\n`;
           });
         }
-
+        
         if (resultados.coincidenciasExactas.length === 0 && resultados.coincidenciasParciales.length === 0) {
           mensaje += "No se encontraron coincidencias.";
         }
-
+        
         alert(mensaje);
         mostrarMensaje("✅ Búsqueda completada.", "success");
       })
@@ -1044,17 +879,17 @@
       })
       .buscarPersonalPorNombre(nombreBuscar);
   }
-
+  
   function verificarDatosPersonal() {
     const doctor = document.getElementById('doctor').value;
-
+    
     if (!doctor) {
       mostrarMensaje("Por favor, seleccione un personal primero.", "error");
       return;
     }
-
+    
     mostrarMensaje("🔍 Verificando datos para " + doctor + "...", "info");
-
+    
     google.script.run
       .withSuccessHandler(function (resultado) {
         console.log('Verificación de datos:', resultado);
@@ -1062,7 +897,7 @@
         mensaje += `- Total de registros: ${resultado.totalRegistros || 0}\n`;
         mensaje += `- Rango de fechas: ${resultado.fechaInicio || 'N/A'} - ${resultado.fechaFin || 'N/A'}\n`;
         mensaje += `- Procedimientos únicos: ${resultado.tiposProcedimientos || 0}`;
-
+        
         alert(mensaje);
         mostrarMensaje("✅ Verificación completada. Revise la consola para más detalles.", "success");
       })
@@ -1072,10 +907,10 @@
       })
       .verificarDatosPersonal(doctor);
   }
-
+  
   function listarPersonalDisponible() {
     mostrarMensaje("🔍 Obteniendo lista completa de personal...", "info");
-
+    
     google.script.run
       .withSuccessHandler(function (personalCompleto) {
         console.log('Personal completo:', personalCompleto);
@@ -1083,7 +918,7 @@
         personalCompleto.forEach((nombre, index) => {
           mensaje += `${index + 1}. ${nombre}\n`;
         });
-
+        
         alert(mensaje);
         mostrarMensaje("✅ Lista obtenida. Revise la consola para más detalles.", "success");
       })
@@ -1094,409 +929,15 @@
       .obtenerPersonalCompleto();
   }
 
-  // ================== NUEVA FUNCIÓN DE DIAGNÓSTICO DE FILTRADO ==================
-  function diagnosticarFiltroPersonal() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🔍 Diagnosticando filtrado para: " + doctor, "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== DIAGNÓSTICO DE FILTRADO ===');
-        console.log('Resultado completo:', resultado);
-
-        let mensaje = `DIAGNÓSTICO DE FILTRADO PARA: ${doctor}\n\n`;
-        mensaje += `✅ Registros encontrados: ${resultado.totalCoincidencias}\n`;
-        mensaje += `⚠️ Posibles falsos positivos: ${resultado.falsosPositivos}\n\n`;
-
-        if (resultado.detallesFalsosPositivos && resultado.detallesFalsosPositivos.length > 0) {
-          mensaje += "FALSOS POSITIVOS DETECTADOS:\n";
-          resultado.detallesFalsosPositivos.forEach(fp => {
-            mensaje += `- Fila ${fp.fila}: "${fp.nombre}" (${fp.fecha})\n`;
-          });
-        } else {
-          mensaje += "✅ No se detectaron falsos positivos.\n";
-        }
-
-        mensaje += "\nRevise la consola del navegador para más detalles.";
-
-        alert(mensaje);
-
-        if (resultado.falsosPositivos > 0) {
-          mostrarMensaje("⚠️ Se detectaron posibles falsos positivos. Revise el diagnóstico.", "warning");
-        } else {
-          mostrarMensaje("✅ Filtrado correcto. No hay falsos positivos detectados.", "success");
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en diagnóstico de filtrado:', error);
-        mostrarMensaje("❌ Error al diagnosticar filtrado: " + error.message, "error");
-      })
-      .diagnosticarFiltradoPersonal(doctor);
-  }
-
-  // ================== NUEVA FUNCIÓN DE PRUEBA DE COMUNICACIÓN ==================
-  function probarComunicacionServidor() {
-    mostrarMensaje("🧪 Probando comunicación con el servidor...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== PRUEBA DE COMUNICACIÓN ===');
-        console.log('Resultado:', resultado);
-        console.log('Tipo:', typeof resultado);
-
-        if (resultado && resultado.mensaje === "Conexión exitosa") {
-          mostrarMensaje("✅ Comunicación exitosa con el servidor", "success");
-          alert(`✅ COMUNICACIÓN EXITOSA\nMensaje: ${resultado.mensaje}\nTimestamp: ${resultado.timestamp}\ndetalleRegistros: ${resultado.detalleRegistros ? 'Presente' : 'Ausente'}`);
-        } else {
-          mostrarMensaje("⚠️ Respuesta inesperada del servidor", "warning");
-          alert(`⚠️ RESPUESTA INESPERADA\n${JSON.stringify(resultado, null, 2)}`);
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en comunicación:', error);
-        mostrarMensaje("❌ Error de comunicación: " + error.message, "error");
-        alert(`❌ ERROR DE COMUNICACIÓN\n${error.message}`);
-      })
-      .probarConexion();
-  }
-
-  function probarCalcularCostosReales() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🧪 Probando calcularCostos con datos reales...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== PRUEBA calcularCostos REAL ===');
-        console.log('Resultado completo:', resultado);
-        console.log('Tipo:', typeof resultado);
-
-        if (resultado === null) {
-          mostrarMensaje("❌ calcularCostos retornó NULL", "error");
-          alert("❌ ERROR: calcularCostos retornó NULL\nRevisa los logs de Google Apps Script para más detalles.");
-        } else {
-          mostrarMensaje("✅ calcularCostos ejecutado correctamente", "success");
-          const mensaje = `✅ RESULTADO calcularCostos:\n` +
-            `Registros: ${resultado.detalleRegistros ? resultado.detalleRegistros.length : 0}\n` +
-            `Total: $${resultado.totales ? resultado.totales.total_con_iva : 0}\n` +
-            `Estructura: ${JSON.stringify(resultado, null, 2).substring(0, 200)}...`;
-          alert(mensaje);
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en calcularCostos:', error);
-        mostrarMensaje("❌ Error en calcularCostos: " + error.message, "error");
-        alert(`❌ ERROR EN calcularCostos\n${error.message}`);
-      })
-      .calcularCostos(doctor, 7, 2025, "completo");
-  }
-
-  // ================== NUEVAS FUNCIONES DE PRUEBA PARA DIVISIÓN DE DATOS ==================
-
-  function probarCalcularCostosSimple() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🧪 Probando calcularCostosSimple...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== PRUEBA calcularCostosSimple ===');
-        console.log('Resultado:', resultado);
-
-        if (resultado === null) {
-          mostrarMensaje("❌ calcularCostosSimple retornó NULL", "error");
-        } else {
-          mostrarMensaje("✅ calcularCostosSimple ejecutado correctamente", "success");
-          const mensaje = `✅ RESULTADO calcularCostosSimple:\n` +
-            `Metadatos: ${resultado.metadatos ? resultado.metadatos.numeroRegistros : 0} registros\n` +
-            `Total: $${resultado.totales ? resultado.totales.total_con_iva : 0}\n` +
-            `Tamaño JSON: ${JSON.stringify(resultado).length} caracteres`;
-          alert(mensaje);
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en calcularCostosSimple:', error);
-        mostrarMensaje("❌ Error en calcularCostosSimple: " + error.message, "error");
-      })
-      .calcularCostosSimple(doctor, 7, 2025, "completo");
-  }
-
-  function probarObtenerDetalleRegistros() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🧪 Probando obtenerDetalleRegistros...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== PRUEBA obtenerDetalleRegistros ===');
-        console.log('Resultado:', resultado);
-
-        if (resultado === null) {
-          mostrarMensaje("❌ obtenerDetalleRegistros retornó NULL", "error");
-        } else {
-          mostrarMensaje("✅ obtenerDetalleRegistros ejecutado correctamente", "success");
-          const mensaje = `✅ RESULTADO obtenerDetalleRegistros:\n` +
-            `Registros encontrados: ${resultado.detalleRegistros ? resultado.detalleRegistros.length : 0}\n` +
-            `Tamaño JSON: ${JSON.stringify(resultado).length} caracteres\n` +
-            `Metadatos: ${JSON.stringify(resultado.metadatos, null, 2)}`;
-          alert(mensaje);
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en obtenerDetalleRegistros:', error);
-        mostrarMensaje("❌ Error en obtenerDetalleRegistros: " + error.message, "error");
-      })
-      .obtenerDetalleRegistros(doctor, 7, 2025, "completo");
-  }
-
-  function probarDetallesMinimo() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🧪 Probando obtenerDetalleRegistrosMinimo...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== PRUEBA obtenerDetalleRegistrosMinimo ===');
-        console.log('Resultado:', resultado);
-
-        if (resultado === null) {
-          mostrarMensaje("❌ obtenerDetalleRegistrosMinimo retornó NULL", "error");
-        } else {
-          mostrarMensaje("✅ obtenerDetalleRegistrosMinimo ejecutado correctamente", "success");
-          const mensaje = `✅ RESULTADO obtenerDetalleRegistrosMinimo:\n` +
-            `Registros encontrados: ${resultado.detalleRegistros ? resultado.detalleRegistros.length : 0}\n` +
-            `Tamaño JSON: ${JSON.stringify(resultado).length} caracteres\n` +
-            `Mensaje: ${resultado.metadatos ? resultado.metadatos.mensaje : 'N/A'}`;
-          alert(mensaje);
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en obtenerDetalleRegistrosMinimo:', error);
-        mostrarMensaje("❌ Error en obtenerDetalleRegistrosMinimo: " + error.message, "error");
-      })
-      .obtenerDetalleRegistrosMinimo(doctor, 7, 2025, "completo");
-  }
-
-  function probarDetallesHibrido() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🧪 Probando obtenerDetalleRegistrosHibrido...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== PRUEBA obtenerDetalleRegistrosHibrido ===');
-        console.log('Resultado:', resultado);
-
-        if (resultado === null) {
-          mostrarMensaje("❌ obtenerDetalleRegistrosHibrido retornó NULL", "error");
-        } else {
-          mostrarMensaje("✅ obtenerDetalleRegistrosHibrido ejecutado correctamente", "success");
-          const mensaje = `✅ RESULTADO obtenerDetalleRegistrosHibrido:\n` +
-            `Registros encontrados: ${resultado.detalleRegistros ? resultado.detalleRegistros.length : 0}\n` +
-            `Tamaño JSON: ${JSON.stringify(resultado).length} caracteres\n` +
-            `Mensaje: ${resultado.metadatos ? resultado.metadatos.mensaje : 'N/A'}`;
-          alert(mensaje);
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en obtenerDetalleRegistrosHibrido:', error);
-        mostrarMensaje("❌ Error en obtenerDetalleRegistrosHibrido: " + error.message, "error");
-      })
-      .obtenerDetalleRegistrosHibrido(doctor, 7, 2025, "completo");
-  }
-
-  function diagnosticarDetallesCompleto() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🔍 Ejecutando diagnóstico completo...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== DIAGNÓSTICO COMPLETO ===');
-        console.log('Resultado:', resultado);
-        mostrarMensaje("✅ Diagnóstico completado - revisa los logs del Apps Script", "success");
-        alert(`🔍 DIAGNÓSTICO COMPLETADO\n\n${resultado}\n\nRevisa los logs del Apps Script para ver el análisis detallado.`);
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en diagnóstico:', error);
-        mostrarMensaje("❌ Error en diagnóstico: " + error.message, "error");
-      })
-      .diagnosticarDetalleRegistros(doctor, 7, 2025, "completo");
-  }
-
-  function probarDetallesSimplificado() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🧪 Probando obtenerDetalleRegistrosSimplificado...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== PRUEBA obtenerDetalleRegistrosSimplificado ===');
-        console.log('Resultado:', resultado);
-
-        if (resultado === null) {
-          mostrarMensaje("❌ obtenerDetalleRegistrosSimplificado retornó NULL", "error");
-        } else {
-          mostrarMensaje("✅ obtenerDetalleRegistrosSimplificado ejecutado correctamente", "success");
-          const mensaje = `✅ RESULTADO obtenerDetalleRegistrosSimplificado:\n` +
-            `Registros encontrados: ${resultado.detalleRegistros ? resultado.detalleRegistros.length : 0}\n` +
-            `Tamaño JSON: ${JSON.stringify(resultado).length} caracteres\n` +
-            `Mensaje: ${resultado.metadatos ? resultado.metadatos.mensaje : 'N/A'}`;
-          alert(mensaje);
-        }
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en obtenerDetalleRegistrosSimplificado:', error);
-        mostrarMensaje("❌ Error en obtenerDetalleRegistrosSimplificado: " + error.message, "error");
-      })
-      .obtenerDetalleRegistrosSimplificado(doctor, 7, 2025, "completo");
-  }
-
-  // 🧪 Función de prueba para verificar el paso de parámetros
-  function probarParametrosScopeFixed() {
-    // 🔧 CAPTURAR PARÁMETROS igual que en calcular()
-    const parametros = {
-      doctor: document.getElementById('doctor').value,
-      mes: parseInt(document.getElementById('mes').value),
-      anio: parseInt(document.getElementById('anio').value),
-      quincena: document.getElementById('quincena').value
-    };
-
-    console.log('🧪 PRUEBA DE PARÁMETROS - SCOPE FIJO');
-    console.log('Parámetros capturados:', parametros);
-
-    if (!parametros.doctor) {
-      mostrarMensaje("Por favor, seleccione un doctor primero.", "error");
-      return;
-    }
-
-    mostrarMensaje("🧪 Probando paso de parámetros con scope corregido...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('✅ RESULTADO RECIBIDO:', resultado);
-        mostrarMensaje("✅ Parámetros llegaron correctamente: " + JSON.stringify(resultado, null, 2), "success");
-      })
-      .withFailureHandler(function (error) {
-        console.error('❌ ERROR:', error);
-        mostrarMensaje("❌ Error: " + error.message, "error");
-      })
-      .verificarParametros(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena);
-  }
-
-  function compararLogicasDetalle() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🔍 Comparando lógicas calcularCostos vs búsqueda directa...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== COMPARACIÓN DE LÓGICAS ===');
-        console.log('Resultado:', resultado);
-
-        const mensaje = `🔍 COMPARACIÓN DE LÓGICAS:\n\n` +
-          `📊 calcularCostos encontró: ${resultado.calcularCostos} registros\n` +
-          `🔍 Búsqueda directa encontró: ${resultado.busquedaDirecta} registros\n` +
-          `📋 Coincidencias de nombre: ${resultado.coincidenciasNombre}\n\n` +
-          `Revisa los logs del Apps Script para ver los detalles completos.`;
-
-        mostrarMensaje("✅ Comparación completada - revisa los logs", "success");
-        alert(mensaje);
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en comparación:', error);
-        mostrarMensaje("❌ Error en comparación: " + error.message, "error");
-      })
-      .compararLogicas(doctor, 7, 2025, "completo");
-  }
-
-  function verificarParametrosExactos() {
-    const doctor = document.getElementById('doctor').value;
-
-    if (!doctor) {
-      mostrarMensaje("⚠️ Por favor seleccione un nombre primero.", "warning");
-      return;
-    }
-
-    mostrarMensaje("🔍 Verificando parámetros exactos...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('=== VERIFICACIÓN DE PARÁMETROS ===');
-        console.log('Resultado:', resultado);
-
-        const mensaje = `🔍 VERIFICACIÓN DE PARÁMETROS:\n\n` +
-          `📝 Nombre: "${resultado.parametros.nombre}" (${resultado.tipos.nombre})\n` +
-          `📅 Mes: "${resultado.parametros.mes}" → ${resultado.parametros.mesInt} (${resultado.tipos.mes})\n` +
-          `📅 Año: "${resultado.parametros.anio}" → ${resultado.parametros.anioInt} (${resultado.tipos.anio})\n` +
-          `📋 Quincena: "${resultado.parametros.quincena}" (${resultado.tipos.quincena})\n\n` +
-          `Revisa los logs para ver si calcularCostos funciona con estos parámetros.`;
-
-        mostrarMensaje("✅ Verificación completada - revisa los logs", "success");
-        alert(mensaje);
-      })
-      .withFailureHandler(function (error) {
-        console.error('Error en verificación:', error);
-        mostrarMensaje("❌ Error en verificación: " + error.message, "error");
-      })
-      .verificarParametros(doctor, 7, 2025, "completo");
-  }
-
-
+  
   // ================== FUNCIONES DE UTILIDAD ADICIONALES ==================
-
+  
   function limpiarCacheBrowser() {
     // Limpiar localStorage si existe
-    if (typeof (Storage) !== "undefined") {
+    if (typeof(Storage) !== "undefined") {
       localStorage.clear();
     }
-
+    
     // Forzar recarga de datos
     location.reload(true);
   }
@@ -1511,7 +952,7 @@
       userAgent: navigator.userAgent,
       url: window.location.href
     };
-
+    
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
@@ -1519,7 +960,7 @@
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
-
+    
     mostrarMensaje("📁 Logs exportados correctamente.", "success");
   }
 

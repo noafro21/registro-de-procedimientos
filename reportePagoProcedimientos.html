@@ -16,10 +16,10 @@
 
     <div id="reportControls">
         <h2>Reporte de Procedimiento</h2>
-        
+
         <!-- ✅ MENSAJE DE STATUS DINÁMICO -->
         <div id="formMessage" class="message-container"></div>
-        
+
         <label for="doctor">Seleccione personal:</label>
         <select id="doctor">
             <option disabled selected value="">Cargando personal...</option>
@@ -48,15 +48,16 @@
         <!-- ✅ BOTONES DE ACCIÓN MEJORADOS -->
         <div class="action-buttons">
             <button type="button" onclick="calcular()" class="btn-primary">📊 Calcular Reporte</button>
-            <button type="button" onclick="actualizarSelectoresFecha()" class="btn-secondary">🔄 Actualizar Fechas</button>
+            <button type="button" onclick="actualizarSelectoresFecha()" class="btn-secondary">🔄 Actualizar
+                Fechas</button>
             <button type="button" onclick="mostrarAyudaFechas()" class="btn-help">❓ Ayuda Fechas</button>
         </div>
-        
+
         <!-- ✅ INFORMACIÓN DE SELECCIÓN ACTUAL -->
         <div id="seleccionActual" class="selection-info">
             <small>📅 Selección actual: <span id="descripcionSeleccion">Ninguna</span></small>
         </div>
-        
+
         <!-- ✅ HERRAMIENTAS DE DEBUGGING EXPANDIDAS -->
         <details class="debug-tools">
             <summary class="debug-summary">🔧 Herramientas de Debugging</summary>
@@ -73,11 +74,47 @@
                 <button type="button" onclick="listarPersonalDisponible()" class="debug-btn debug-btn-green">
                     👥 Listar Personal
                 </button>
+                <button type="button" onclick="diagnosticarFiltroPersonal()" class="debug-btn debug-btn-orange">
+                    🎯 Diagnosticar Filtrado
+                </button>
+                <button type="button" onclick="probarComunicacionServidor()" class="debug-btn debug-btn-cyan">
+                    🔗 Probar Comunicación
+                </button>
+                <button type="button" onclick="probarCalcularCostosReales()" class="debug-btn debug-btn-magenta">
+                    🧪 Probar calcularCostos
+                </button>
+                <button type="button" onclick="probarCalcularCostosSimple()" class="debug-btn debug-btn-purple">
+                    🔧 Probar Simple
+                </button>
+                <button type="button" onclick="probarObtenerDetalleRegistros()" class="debug-btn debug-btn-teal">
+                    📝 Probar Detalles
+                </button>
+                <button type="button" onclick="probarDetallesMinimo()" class="debug-btn debug-btn-lime">
+                    🧪 Probar Detalles Mínimo
+                </button>
+                <button type="button" onclick="probarDetallesHibrido()" class="debug-btn debug-btn-indigo">
+                    🔄 Probar Híbrido
+                </button>
+                <button type="button" onclick="diagnosticarDetallesCompleto()" class="debug-btn debug-btn-red">
+                    🔬 Diagnóstico Completo
+                </button>
+                <button type="button" onclick="probarDetallesSimplificado()" class="debug-btn debug-btn-brown">
+                    🧩 Probar Simplificado
+                </button>
+                <button type="button" onclick="compararLogicasDetalle()" class="debug-btn debug-btn-deep-orange">
+                    ⚖️ Comparar Lógicas
+                </button>
+                <button type="button" onclick="verificarParametrosExactos()" class="debug-btn debug-btn-amber">
+                    🔢 Verificar Parámetros
+                </button>
                 <button type="button" onclick="validarSeleccionFecha()" class="debug-btn debug-btn-yellow">
                     ✅ Validar Fechas
                 </button>
                 <button type="button" onclick="mostrarLogConsola()" class="debug-btn debug-btn-gray">
                     📋 Ver Logs
+                </button>
+                <button type="button" onclick="probarParametrosScopeFixed()" class="debug-btn debug-btn-blue-800">
+                    🧪 Probar Scope Corregido
                 </button>
             </div>
         </details>
@@ -118,7 +155,8 @@
                     <tr class="solo-pantalla">
                         <td class="label-td">Motivo:</td>
                         <td class="value-td">
-                            <input type="text" id="motivoDescuento" placeholder="Motivo del descuento o extra" maxlength="100">
+                            <input type="text" id="motivoDescuento" placeholder="Motivo del descuento o extra"
+                                maxlength="100">
                             <span id="motivoDescuentoTexto"></span>
                         </td>
                     </tr>
