@@ -329,20 +329,20 @@
 
   // ✅ NUEVA FUNCIÓN: Generar detalle de registros
   function generarDetalleRegistros(detalleRegistros, nombrePersonal) {
-    console.log('=== GENERANDO DETALLE DE REGISTROS ===');
+    console.log('=== GENERANDO REPORTE DE PROCEDIMIENTOS ===');
     console.log('detalleRegistros:', detalleRegistros);
     console.log('nombrePersonal:', nombrePersonal);
 
     if (!detalleRegistros || !Array.isArray(detalleRegistros) || detalleRegistros.length === 0) {
-      console.log('⚠️ No hay detalles de registros para mostrar');
+      console.log('⚠️ No hay registros para mostrar');
       return '';
     }
 
     try {
       let html = `
-        <div class="detalle-registros-section">
-          <h3>📋 Detalle de Registros Encontrados para ${nombrePersonal || 'Personal'}</h3>
-          <p class="detalle-info">Total de registros procesados: <strong>${detalleRegistros.length}</strong></p>
+        <div class="reporte-procedimientos-section">
+          <h2>📋 Reporte de Procedimientos - ${nombrePersonal || 'Personal'}</h2>
+          <p class="reporte-info">Total de registros procesados: <strong>${detalleRegistros.length}</strong></p>
           
           <div class="registros-container">
       `;
@@ -381,7 +381,9 @@
                   <th>Procedimiento</th>
                   <th>Cant.</th>
                   <th>Costo Unit.</th>
-                  <th>Total</th>
+                  <th>Sin IVA</th>
+                  <th>IVA (4%)</th>
+                  <th>Total con IVA</th>
                 </tr>
               </thead>
               <tbody>
@@ -390,12 +392,19 @@
         // ✅ VERIFICAR si hay procedimientos antes de iterar
         if (registro.procedimientos && Array.isArray(registro.procedimientos)) {
           registro.procedimientos.forEach(proc => {
+            // ✅ CORREGIDO: Usar los valores correctos del backend
+            const sinIVA = proc.subtotal;        // Precio sin IVA (cantidad × costo unitario)
+            const iva = proc.iva;               // IVA ya calculado en el backend
+            const totalConIVA = proc.total;     // Total con IVA ya calculado en el backend
+
             html += `
             <tr>
               <td class="text-left">${proc.nombre}</td>
               <td>${proc.cantidad}</td>
               <td>₡${formatearMoneda(proc.costoUnitario)}</td>
-              <td>₡${formatearMoneda(proc.total)}</td>
+              <td>₡${formatearMoneda(sinIVA)}</td>
+              <td>₡${formatearMoneda(iva)}</td>
+              <td>₡${formatearMoneda(totalConIVA)}</td>
             </tr>
           `;
           });
@@ -403,19 +412,26 @@
           // Si no hay procedimientos (datos de prueba), mostrar mensaje
           html += `
             <tr>
-              <td colspan="4" class="text-center">
+              <td colspan="6" class="text-center">
                 <em>📝 ${registro.procedimientosResumen || 'Datos de prueba - sin procedimientos detallados'}</em>
               </td>
             </tr>
           `;
         }
 
+        // ✅ CORREGIDO: Calcular totales del registro correctamente
+        const subtotalRegistroSinIVA = registro.subtotalRegistro || 0; // Ahora es realmente sin IVA
+        const ivaRegistro = subtotalRegistroSinIVA * 0.04;
+        const totalConIVARegistro = subtotalRegistroSinIVA + ivaRegistro;
+
         html += `
               </tbody>
               <tfoot>
                 <tr class="total-registro">
                   <td colspan="3"><strong>Total del registro:</strong></td>
-                  <td><strong>₡${formatearMoneda(registro.subtotalRegistro || 0)}</strong></td>
+                  <td><strong>₡${formatearMoneda(subtotalRegistroSinIVA)}</strong></td>
+                  <td><strong>₡${formatearMoneda(ivaRegistro)}</strong></td>
+                  <td><strong>₡${formatearMoneda(totalConIVARegistro)}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -424,16 +440,20 @@
       `;
       });
 
-      // Calcular estadísticas
+      // ✅ CORREGIDO: Calcular estadísticas correctamente
       const totalRegistrosSabado = registrosOrdenados.filter(r => r.esSabado).length;
       const totalRegistrosLV = registrosOrdenados.length - totalRegistrosSabado;
-      const totalGeneral = registrosOrdenados.reduce((sum, r) => sum + r.subtotalRegistro, 0);
+
+      // Calcular totales reales
+      const totalSinIVA = registrosOrdenados.reduce((sum, r) => sum + (r.subtotalRegistro || 0), 0);
+      const totalIVA = totalSinIVA * 0.04;
+      const totalConIVA = totalSinIVA + totalIVA;
 
       html += `
         </div>
         
         <div class="estadisticas-registros">
-          <h4>📊 Estadísticas del Período</h4>
+          <h3>📊 Resumen del Período</h3>
           <div class="stats-grid">
             <div class="stat-item">
               <span class="stat-label">📅 Registros L-V:</span>
@@ -444,8 +464,20 @@
               <span class="stat-value">${totalRegistrosSabado}</span>
             </div>
             <div class="stat-item">
-              <span class="stat-label">💰 Total Período:</span>
-              <span class="stat-value">₡${formatearMoneda(totalGeneral)}</span>
+              <span class="stat-label">📋 Total Registros:</span>
+              <span class="stat-value">${registrosOrdenados.length}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">💰 Subtotal (Sin IVA):</span>
+              <span class="stat-value">₡${formatearMoneda(totalSinIVA)}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">📈 IVA (4%):</span>
+              <span class="stat-value">₡${formatearMoneda(totalIVA)}</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">🏆 Total con IVA:</span>
+              <span class="stat-value">₡${formatearMoneda(totalConIVA)}</span>
             </div>
           </div>
         </div>
@@ -454,11 +486,11 @@
 
       return html;
     } catch (error) {
-      console.error('Error generando detalle de registros:', error);
+      console.error('Error generando reporte de procedimientos:', error);
       return `
-        <div class="detalle-registros-section">
-          <h3>📋 Detalle de Registros</h3>
-          <p class="error-message">Error al mostrar el detalle de registros: ${error.message}</p>
+        <div class="reporte-procedimientos-section">
+          <h2>📋 Reporte de Procedimientos</h2>
+          <p class="error-message">Error al mostrar el reporte: ${error.message}</p>
         </div>
       `;
     }
@@ -491,130 +523,72 @@
       divResultado.innerHTML = '<p>Cargando datos...</p>';
     }
 
-    // ✅ NUEVA ESTRATEGIA: Dividir en dos llamadas separadas
-    let datosResumen = null;
-    let detalleRegistros = null;
-
+    // ✅ NUEVA ESTRATEGIA: Usar solo obtenerDetalleRegistrosSimplificado
     console.log('📋 Parámetros capturados:', parametros);
 
-    // PASO 1: Obtener resumen sin detalles (más pequeño)
+    // Obtener registros detallados con cálculos (único llamado)
     google.script.run
-      .withSuccessHandler(function (resumen) {
-        console.log('=== PASO 1: RESUMEN RECIBIDO ===');
-        console.log('Datos resumen:', resumen);
+      .withSuccessHandler(function (detalles) {
+        console.log('=== REGISTROS DETALLADOS RECIBIDOS ===');
+        console.log('Detalles:', detalles);
 
-        if (!resumen) {
-          mostrarMensaje("❌ Error: No se recibieron datos del resumen", "error");
+        if (!detalles || !detalles.detalleRegistros || detalles.detalleRegistros.length === 0) {
+          mostrarMensaje("⚠️ No se encontraron registros para " + parametros.doctor, "warning");
+          document.getElementById('resultado').innerHTML = '<p class="no-data">No hay procedimientos registrados en este período.</p>';
           return;
         }
 
-        datosResumen = resumen;
-        mostrarMensaje("✅ Resumen obtenido. Obteniendo detalles...", "info");
+        console.log(`✅ ${detalles.detalleRegistros.length} registros detallados obtenidos`);
 
-        // PASO 2: Obtener detalles de registros
-        google.script.run
-          .withSuccessHandler(function (detalles) {
-            console.log('=== PASO 2: DETALLES RECIBIDOS ===');
-            console.log('Detalles:', detalles);
-
-            if (detalles && detalles.detalleRegistros) {
-              detalleRegistros = detalles.detalleRegistros;
-              console.log(`✅ ${detalleRegistros.length} registros detallados obtenidos`);
-            }
-
-            // Combinar datos y mostrar resultado
-            const datosCompletos = {
-              ...datosResumen,
-              detalleRegistros: detalleRegistros || []
-            };
-
-            mostrarResultadoCompleto(datosCompletos, parametros.doctor);
-          })
-          .withFailureHandler(function (error) {
-            console.error('❌ Error obteniendo detalles:', error);
-            // Continuar sin detalles
-            const datosCompletos = {
-              ...datosResumen,
-              detalleRegistros: []
-            };
-            mostrarResultadoCompleto(datosCompletos, parametros.doctor);
-          })
-          .obtenerDetalleRegistrosSimplificado(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena);
+        // Mostrar resultado basado solo en registros detallados
+        mostrarResultadoCompleto(detalles, parametros.doctor);
       })
       .withFailureHandler(function (error) {
-        console.error('❌ Error obteniendo resumen:', error);
+        console.error('❌ Error obteniendo registros:', error);
         mostrarMensaje("❌ Error al obtener datos: " + error.message, "error");
         document.getElementById('resultado').innerHTML = '<p class="error-message">Error: ' + error.message + '</p>';
       })
-      .calcularCostosSimple(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena);
+      .obtenerDetalleRegistrosSimplificado(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena);
   }
 
-  // ✅ NUEVA FUNCIÓN para mostrar resultado completo
+  // ✅ NUEVA FUNCIÓN para mostrar resultado completo basado en DETALLES DE REGISTROS
   function mostrarResultadoCompleto(resumen, doctor) {
     console.log('=== MOSTRANDO RESULTADO COMPLETO ===');
     console.log('Datos finales:', resumen);
 
-    // Verificar si los totales son cero
-    if (!resumen.totales || resumen.totales.subtotal === 0) {
+    // Verificar si hay registros detallados
+    if (!resumen.detalleRegistros || resumen.detalleRegistros.length === 0) {
       mostrarMensaje("⚠️ No se encontraron procedimientos registrados para " + doctor + " en el período seleccionado.", "warning");
       document.getElementById('resultado').innerHTML = '<p class="no-data">No hay procedimientos registrados en este período.</p>';
       return;
     }
 
-    // ✅ PROCESAMIENTO DE DATOS MEJORADO
+    // ✅ USAR SOLO DETALLE DE REGISTROS CON CÁLCULOS
     const divResultado = document.getElementById('resultado');
     let htmlResultado = '';
 
-    // Asegura que ambos objetos existan aunque estén vacíos
-    const resumenLV = resumen.lv || {};
-    const resumenSab = resumen.sab || {};
-
-    let totalSubtotalLV = 0;
-    let totalIVALV = 0;
-    let totalConIVALV = 0;
-    for (const key in resumenLV) {
-      if (resumenLV[key]) {
-        totalSubtotalLV += resumenLV[key].subtotal || 0;
-        totalIVALV += resumenLV[key].iva || 0;
-        totalConIVALV += resumenLV[key].total_con_iva || 0;
-      }
-    }
-
-    let totalSubtotalSab = 0;
-    let totalIVASab = 0;
-    let totalConIVASab = 0;
-    for (const key in resumenSab) {
-      if (resumenSab[key]) {
-        totalSubtotalSab += resumenSab[key].subtotal || 0;
-        totalIVASab += resumenSab[key].iva || 0;
-        totalConIVASab += resumenSab[key].total_con_iva || 0;
-      }
-    }
-
-    htmlResultado += generarTablaHtml("Reporte de Lunes a Viernes", resumenLV, totalSubtotalLV, totalIVALV, totalConIVALV);
-    htmlResultado += generarTablaHtml("Reporte de Sábados", resumenSab, totalSubtotalSab, totalIVASab, totalConIVASab);
-
-    // ✅ NUEVO: Agregar sección de detalle de registros (con manejo de errores)
+    // Generar el reporte basado en los registros detallados
     try {
-      if (resumen.detalleRegistros && resumen.detalleRegistros.length > 0) {
-        console.log('Intentando generar detalle de registros...');
-        const detalleHtml = generarDetalleRegistros(resumen.detalleRegistros, doctor);
-        if (detalleHtml) {
-          htmlResultado += detalleHtml;
-          console.log('✅ Detalle de registros agregado exitosamente');
-        }
-      } else {
-        console.log('⚠️ No hay detalleRegistros o está vacío');
+      console.log('Generando reporte basado en detalle de registros...');
+      const detalleHtml = generarDetalleRegistros(resumen.detalleRegistros, doctor);
+      if (detalleHtml) {
+        htmlResultado += detalleHtml;
+        console.log('✅ Reporte basado en detalle de registros generado exitosamente');
       }
     } catch (error) {
-      console.error('❌ Error generando detalle de registros:', error);
-      // Continuar sin el detalle si hay error
+      console.error('❌ Error generando reporte de registros:', error);
+      mostrarMensaje("❌ Error generando el reporte: " + error.message, "error");
+      return;
     }
 
     divResultado.innerHTML = htmlResultado;
 
-    // ACTUALIZA LOS TOTALES PARA EL DESCUENTO
-    mostrarTotalesReporte(resumen.totales.subtotal, resumen.totales.total_con_iva);
+    // Calcular totales desde los registros detallados
+    const totalCalculado = resumen.detalleRegistros.reduce((sum, registro) => sum + (registro.subtotalRegistro || 0), 0);
+    const totalConIVA = totalCalculado * 1.04; // Aplicar IVA del 4%
+
+    // ACTUALIZAR LOS TOTALES PARA EL DESCUENTO
+    mostrarTotalesReporte(totalCalculado, totalConIVA);
 
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const selectedMonthName = monthNames[parseInt(document.getElementById('mes').value) - 1];
@@ -775,11 +749,17 @@
 
     if (!validarEmail(emailRecipient)) {
       mostrarEmailMensaje("Por favor, ingrese un email válido.", "error");
-      restaurarInputsPDF();
       return;
     }
 
-    const reportContent = document.getElementById('printableReportContent').innerHTML;
+    // ✅ MEJORADO: Usar la misma función para crear contenido que el PDF
+    const reportContent = crearContenidoParaPDF();
+
+    if (!reportContent) {
+      mostrarEmailMensaje("❌ No hay contenido para enviar. Por favor, genere el reporte primero.", "error");
+      return;
+    }
+
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const selectedMonthName = monthNames[parseInt(mes) - 1];
     const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
@@ -790,7 +770,6 @@
 
     google.script.run
       .withSuccessHandler(response => {
-        restaurarInputsPDF();
         if (response.success) {
           mostrarEmailMensaje(response.message, "success");
         } else {
@@ -798,15 +777,29 @@
         }
       })
       .withFailureHandler(error => {
-        restaurarInputsPDF();
         mostrarMensaje("❌ Error al enviar el reporte: " + error.message, "error");
       })
       .enviarReporteCostos(reportContent, emailRecipient, subject, fileName);
   }
 
   function descargarReporteCostosPDF() {
-    prepararParaPDF();
-    const reportContent = document.getElementById('printableReportContent').innerHTML;
+    // Crear contenido responsive para PDF
+    const reportContent = crearContenidoParaPDF();
+
+    if (!reportContent) {
+      mostrarMensaje("❌ No hay contenido para generar el PDF. Por favor, genere el reporte primero.", "error");
+      return;
+    }
+
+    // Verificar si el contenido es muy grande y optimizar si es necesario
+    const contentSize = reportContent.length;
+    console.log(`Tamaño del contenido PDF: ${contentSize} caracteres`);
+
+    if (contentSize > 50000) { // Si es muy grande, usar procesamiento por lotes
+      console.log('Contenido grande detectado, procesando en lotes...');
+      descargarPDFGrande(reportContent);
+      return;
+    }
 
     const doctor = document.getElementById('doctor').value;
     const mes = document.getElementById('mes').value;
@@ -814,14 +807,13 @@
     const quincena = document.getElementById('quincena').value;
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const selectedMonthName = monthNames[parseInt(mes) - 1];
-    const fileName = `Reporte_Procedimientos_y_Consultas_${doctor.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
-    const pageTitle = `Reporte de Procedimientos y Consultas - ${doctor} - ${selectedMonthName} ${anio}`;
+    const fileName = `Reporte_Procedimientos_${doctor.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+    const pageTitle = `Reporte de Procedimientos - ${doctor} - ${selectedMonthName} ${anio}`;
 
-    mostrarEmailMensaje("Generando PDF para descarga...", "info");
+    mostrarEmailMensaje("Generando PDF optimizado...", "info");
 
     google.script.run
       .withSuccessHandler(function (base64Pdf) {
-        restaurarInputsPDF();
         if (base64Pdf) {
           const blob = b64toBlob(base64Pdf, 'application/pdf');
           const url = URL.createObjectURL(blob);
@@ -832,19 +824,724 @@
           a.click();
           document.body.removeChild(a);
           URL.revokeObjectURL(url);
-          mostrarEmailMensaje("✅ Reporte descargado con éxito.", "success");
+          mostrarEmailMensaje("✅ PDF descargado exitosamente con formato responsive.", "success");
         } else {
-          mostrarMensaje("❌ No se pudo generar el PDF para descarga.", "error");
+          mostrarMensaje("❌ No se pudo generar el PDF.", "error");
         }
       })
       .withFailureHandler(function (error) {
-        restaurarInputsPDF();
-        mostrarMensaje("❌ Error al descargar el PDF: " + error.message, "error");
+        console.error('Error generando PDF:', error);
+        mostrarMensaje("❌ Error al generar el PDF: " + error.message, "error");
       })
       .generarPdfParaDescarga(reportContent, fileName, 'stylesReportePagoProcedimientos', pageTitle);
   }
 
-  function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
+  // ✅ FUNCIÓN AUXILIAR: Manejar PDFs grandes dividiéndolos en secciones
+  function descargarPDFGrande(contenidoCompleto) {
+    try {
+      // Dividir el contenido en secciones más pequeñas
+      const registros = extraerDatosRegistros();
+      const totalRegistros = registros.length;
+      const registrosPorPagina = 10; // Limitar a 10 registros por página
+
+      if (totalRegistros <= registrosPorPagina) {
+        // Si no es tan grande, procesar normalmente
+        procesarPDFNormal(contenidoCompleto);
+        return;
+      }
+
+      // Dividir en páginas
+      const totalPaginas = Math.ceil(totalRegistros / registrosPorPagina);
+
+      mostrarEmailMensaje(`Generando PDF en ${totalPaginas} páginas para ${totalRegistros} registros...`, "info");
+
+      // Generar PDF con paginación
+      const contenidoPaginado = generarContenidoPaginado(registros, registrosPorPagina);
+
+      const doctor = document.getElementById('doctor').value;
+      const mes = document.getElementById('mes').value;
+      const anio = parseInt(document.getElementById('anio').value);
+      const quincena = document.getElementById('quincena').value;
+      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      const selectedMonthName = monthNames[parseInt(mes) - 1];
+      const fileName = `Reporte_Paginado_${doctor.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+      const pageTitle = `Reporte Paginado - ${doctor} - ${selectedMonthName} ${anio}`;
+
+      google.script.run
+        .withSuccessHandler(function (base64Pdf) {
+          if (base64Pdf) {
+            const blob = b64toBlob(base64Pdf, 'application/pdf');
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            mostrarEmailMensaje(`✅ PDF paginado descargado exitosamente (${totalPaginas} páginas).`, "success");
+          } else {
+            mostrarMensaje("❌ No se pudo generar el PDF paginado.", "error");
+          }
+        })
+        .withFailureHandler(function (error) {
+          console.error('Error generando PDF paginado:', error);
+          mostrarMensaje("❌ Error al generar el PDF paginado: " + error.message, "error");
+        })
+        .generarPdfParaDescarga(contenidoPaginado, fileName, 'stylesReportePagoProcedimientos', pageTitle);
+
+    } catch (error) {
+      console.error('Error procesando PDF grande:', error);
+      mostrarMensaje("❌ Error procesando PDF grande: " + error.message, "error");
+    }
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Generar contenido paginado
+  function generarContenidoPaginado(registros, registrosPorPagina) {
+    const totalPaginas = Math.ceil(registros.length / registrosPorPagina);
+
+    // Obtener datos generales
+    const doctor = document.getElementById('doctor').value;
+    const mes = document.getElementById('mes').value;
+    const anio = document.getElementById('anio').value;
+    const quincena = document.getElementById('quincena').value;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const selectedMonthName = monthNames[parseInt(mes) - 1];
+    const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+
+    // Obtener totales
+    const subtotalOriginal = document.getElementById('subtotalOriginal')?.textContent || '0.00';
+    const montoDescontar = document.getElementById('montoDescontar')?.value || '0';
+    const motivoDescuento = document.getElementById('motivoDescuento')?.value || '';
+    const subtotalConDescuento = document.getElementById('subtotalConDescuento')?.textContent || '0.00';
+    const granTotal = document.getElementById('granTotal')?.textContent || '0.00';
+
+    let contenidoPaginado = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Reporte Paginado ${doctor} - ${selectedMonthName} ${anio}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: Arial, sans-serif; 
+            font-size: 10px; 
+            line-height: 1.3; 
+            color: #333; 
+            margin: 8px;
+          }
+          .pagina { 
+            page-break-after: always; 
+            margin-bottom: 20px; 
+          }
+          .pagina:last-child { 
+            page-break-after: auto; 
+          }
+          .header { 
+            text-align: center; 
+            margin-bottom: 15px; 
+            padding-bottom: 8px; 
+            border-bottom: 2px solid #333; 
+          }
+          .header h1 { 
+            font-size: 14px; 
+            margin-bottom: 3px; 
+            color: #000; 
+          }
+          .header .info { 
+            font-size: 9px; 
+            color: #666; 
+          }
+          .registro { 
+            margin-bottom: 12px; 
+            border: 1px solid #ddd; 
+            page-break-inside: avoid; 
+          }
+          .registro-header { 
+            background: #f5f5f5; 
+            padding: 4px 6px; 
+            border-bottom: 1px solid #ddd; 
+            font-weight: bold; 
+            font-size: 9px; 
+          }
+          .tabla { 
+            width: 100%; 
+            border-collapse: collapse; 
+            font-size: 8px; 
+          }
+          .tabla th, .tabla td { 
+            border: 1px solid #ddd; 
+            padding: 2px 4px; 
+            text-align: left; 
+          }
+          .tabla th { 
+            background: #f0f0f0; 
+            font-weight: bold; 
+            font-size: 7px; 
+          }
+          .tabla .num { text-align: right; }
+          .tabla .total-row { 
+            background: #f9f9f9; 
+            font-weight: bold; 
+          }
+          .pie-pagina { 
+            position: fixed; 
+            bottom: 10px; 
+            width: 100%; 
+            text-align: center; 
+            font-size: 8px; 
+            color: #666; 
+          }
+          .resumen-final { 
+            margin-top: 15px; 
+            padding: 8px; 
+            background: #f9f9f9; 
+            border: 1px solid #ddd; 
+          }
+          .resumen-final h3 { 
+            font-size: 11px; 
+            margin-bottom: 6px; 
+            color: #000; 
+          }
+          .resumen-final table { 
+            width: 100%; 
+            border-collapse: collapse; 
+          }
+          .resumen-final td { 
+            padding: 3px 6px; 
+            border-bottom: 1px solid #ddd; 
+            font-size: 9px; 
+          }
+          .resumen-final .gran-total { 
+            font-weight: bold; 
+            background: #e9e9e9; 
+            border-top: 2px solid #333; 
+          }
+        </style>
+      </head>
+      <body>
+    `;
+
+    // Generar páginas
+    for (let pagina = 0; pagina < totalPaginas; pagina++) {
+      const inicio = pagina * registrosPorPagina;
+      const fin = Math.min(inicio + registrosPorPagina, registros.length);
+      const registrosPagina = registros.slice(inicio, fin);
+
+      contenidoPaginado += `
+        <div class="pagina">
+          <div class="header">
+            <h1>Reporte de Procedimientos y Consultas</h1>
+            <div class="info">
+              <p><strong>${doctor}</strong> - ${selectedMonthName} ${anio} (${quincenaText})</p>
+              <p>Página ${pagina + 1} de ${totalPaginas} - Registros ${inicio + 1} a ${fin} de ${registros.length}</p>
+            </div>
+          </div>
+      `;
+
+      // Agregar registros de esta página
+      registrosPagina.forEach(registro => {
+        contenidoPaginado += `
+          <div class="registro">
+            <div class="registro-header">
+              Registro #${registro.numero} - ${registro.fecha} - ${registro.tipo}
+            </div>
+            <table class="tabla">
+              <thead>
+                <tr>
+                  <th style="width: 35%;">Procedimiento</th>
+                  <th style="width: 8%;">Cant.</th>
+                  <th style="width: 15%;">Costo Unit.</th>
+                  <th style="width: 15%;">Sin IVA</th>
+                  <th style="width: 12%;">IVA (4%)</th>
+                  <th style="width: 15%;">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        // Agregar procedimientos
+        registro.procedimientos.forEach(proc => {
+          contenidoPaginado += `
+            <tr>
+              <td>${proc.nombre}</td>
+              <td class="num">${proc.cantidad}</td>
+              <td class="num">${proc.costoUnit}</td>
+              <td class="num">${proc.sinIVA}</td>
+              <td class="num">${proc.iva}</td>
+              <td class="num">${proc.total}</td>
+            </tr>
+          `;
+        });
+
+        // Agregar total del registro
+        contenidoPaginado += `
+                <tr class="total-row">
+                  <td colspan="3"><strong>Total del registro:</strong></td>
+                  <td class="num"><strong>₡${registro.totalRegistro.sinIVA}</strong></td>
+                  <td class="num"><strong>₡${registro.totalRegistro.iva}</strong></td>
+                  <td class="num"><strong>₡${registro.totalRegistro.total}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+      });
+
+      contenidoPaginado += `
+        </div>
+      `;
+    }
+
+    // Agregar resumen final en la última página
+    contenidoPaginado += `
+      <div class="resumen-final">
+        <h3>Resumen General de Totales</h3>
+        <table>
+          <tr>
+            <td><strong>Subtotal original:</strong></td>
+            <td style="text-align: right;"><strong>₡${subtotalOriginal}</strong></td>
+          </tr>
+          ${parseFloat(montoDescontar) !== 0 ? `
+          <tr>
+            <td>Descuento/Extra aplicado:</td>
+            <td style="text-align: right;">₡${parseFloat(montoDescontar).toFixed(2)}</td>
+          </tr>
+          ${motivoDescuento ? `
+          <tr>
+            <td>Motivo:</td>
+            <td style="text-align: right;">${motivoDescuento}</td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td><strong>Subtotal con ajustes:</strong></td>
+            <td style="text-align: right;"><strong>₡${subtotalConDescuento}</strong></td>
+          </tr>
+          ` : ''}
+          <tr class="gran-total">
+            <td><strong>GRAN TOTAL:</strong></td>
+            <td style="text-align: right;"><strong>₡${granTotal}</strong></td>
+          </tr>
+        </table>
+      </div>
+      
+      </body>
+      </html>
+    `;
+
+    return contenidoPaginado;
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Procesar PDF normal
+  function procesarPDFNormal(contenido) {
+    const doctor = document.getElementById('doctor').value;
+    const mes = document.getElementById('mes').value;
+    const anio = parseInt(document.getElementById('anio').value);
+    const quincena = document.getElementById('quincena').value;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const selectedMonthName = monthNames[parseInt(mes) - 1];
+    const fileName = `Reporte_Procedimientos_${doctor.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+    const pageTitle = `Reporte de Procedimientos - ${doctor} - ${selectedMonthName} ${anio}`;
+
+    google.script.run
+      .withSuccessHandler(function (base64Pdf) {
+        if (base64Pdf) {
+          const blob = b64toBlob(base64Pdf, 'application/pdf');
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          mostrarEmailMensaje("✅ PDF descargado exitosamente.", "success");
+        } else {
+          mostrarMensaje("❌ No se pudo generar el PDF.", "error");
+        }
+      })
+      .withFailureHandler(function (error) {
+        console.error('Error generando PDF:', error);
+        mostrarMensaje("❌ Error al generar el PDF: " + error.message, "error");
+      })
+      .generarPdfParaDescarga(contenido, fileName, 'stylesReportePagoProcedimientos', pageTitle);
+  }  // ✅ NUEVA FUNCIÓN: Crear contenido específico para PDF con formato responsive
+  function crearContenidoParaPDF() {
+    try {
+      // Obtener el contenido del resultado
+      const resultadoDiv = document.getElementById('resultado');
+      if (!resultadoDiv || !resultadoDiv.innerHTML.trim()) {
+        console.log('No hay contenido en el div resultado');
+        return null;
+      }
+
+      // Obtener parámetros del reporte
+      const doctor = document.getElementById('doctor').value;
+      const mes = document.getElementById('mes').value;
+      const anio = document.getElementById('anio').value;
+      const quincena = document.getElementById('quincena').value;
+      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      const selectedMonthName = monthNames[parseInt(mes) - 1];
+      const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+
+      // Obtener información de los totales
+      const subtotalOriginal = document.getElementById('subtotalOriginal')?.textContent || '0.00';
+      const montoDescontar = document.getElementById('montoDescontar')?.value || '0';
+      const motivoDescuento = document.getElementById('motivoDescuento')?.value || '';
+      const subtotalConDescuento = document.getElementById('subtotalConDescuento')?.textContent || '0.00';
+      const granTotal = document.getElementById('granTotal')?.textContent || '0.00';
+
+      // Extraer datos de los registros para procesamiento optimizado
+      const registros = extraerDatosRegistros();
+
+      if (!registros || registros.length === 0) {
+        console.log('No se encontraron registros para procesar');
+        return null;
+      }
+
+      // Generar HTML optimizado y responsive
+      const htmlParaPDF = generarHTMLResponsive({
+        doctor,
+        selectedMonthName,
+        anio,
+        quincenaText,
+        registros,
+        subtotalOriginal,
+        montoDescontar,
+        motivoDescuento,
+        subtotalConDescuento,
+        granTotal
+      });
+
+      console.log(`Contenido PDF creado: ${registros.length} registros, ${htmlParaPDF.length} caracteres`);
+      return htmlParaPDF;
+
+    } catch (error) {
+      console.error('Error creando contenido para PDF:', error);
+      return null;
+    }
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Extraer datos de registros del DOM
+  function extraerDatosRegistros() {
+    const registros = [];
+
+    try {
+      // Buscar todos los elementos de registro
+      const registroElements = document.querySelectorAll('.registro-item');
+
+      registroElements.forEach((registroEl, index) => {
+        const numeroRegistro = index + 1;
+        const fecha = registroEl.querySelector('.registro-fecha')?.textContent || '';
+        const tipo = registroEl.querySelector('.registro-tipo')?.textContent || '';
+        const fila = registroEl.querySelector('.registro-fila')?.textContent || '';
+
+        // Extraer procedimientos
+        const procedimientos = [];
+        const procedimientoRows = registroEl.querySelectorAll('.tabla-procedimientos-detalle tbody tr');
+
+        procedimientoRows.forEach(row => {
+          const cells = row.querySelectorAll('td');
+          if (cells.length >= 6) {
+            const procedimiento = {
+              nombre: cells[0]?.textContent?.trim() || '',
+              cantidad: cells[1]?.textContent?.trim() || '',
+              costoUnit: cells[2]?.textContent?.trim() || '',
+              sinIVA: cells[3]?.textContent?.trim() || '',
+              iva: cells[4]?.textContent?.trim() || '',
+              total: cells[5]?.textContent?.trim() || ''
+            };
+
+            // Solo agregar si no es una fila de total
+            if (!procedimiento.nombre.includes('Total del registro') && procedimiento.nombre !== '') {
+              procedimientos.push(procedimiento);
+            }
+          }
+        });
+
+        // Extraer total del registro
+        const totalRow = registroEl.querySelector('.total-registro');
+        let totalRegistro = { sinIVA: '0.00', iva: '0.00', total: '0.00' };
+
+        if (totalRow) {
+          const totalCells = totalRow.querySelectorAll('td');
+          if (totalCells.length >= 6) {
+            totalRegistro = {
+              sinIVA: totalCells[3]?.textContent?.replace('₡', '')?.replace(/[^\d.,]/g, '') || '0.00',
+              iva: totalCells[4]?.textContent?.replace('₡', '')?.replace(/[^\d.,]/g, '') || '0.00',
+              total: totalCells[5]?.textContent?.replace('₡', '')?.replace(/[^\d.,]/g, '') || '0.00'
+            };
+          }
+        } else {
+          // Si no encuentra la fila de total, calcularlo desde los procedimientos
+          let totalSinIva = 0;
+          let totalIva = 0;
+          let totalConIva = 0;
+
+          procedimientos.forEach(proc => {
+            const sinIvaNum = parseFloat(proc.sinIVA.replace('₡', '').replace(/[^\d.,]/g, '').replace(',', '')) || 0;
+            const ivaNum = parseFloat(proc.iva.replace('₡', '').replace(/[^\d.,]/g, '').replace(',', '')) || 0;
+            const totalNum = parseFloat(proc.total.replace('₡', '').replace(/[^\d.,]/g, '').replace(',', '')) || 0;
+
+            totalSinIva += sinIvaNum;
+            totalIva += ivaNum;
+            totalConIva += totalNum;
+          });
+
+          totalRegistro = {
+            sinIVA: totalSinIva.toFixed(2),
+            iva: totalIva.toFixed(2),
+            total: totalConIva.toFixed(2)
+          };
+        }
+
+        if (procedimientos.length > 0) {
+          registros.push({
+            numero: numeroRegistro,
+            fecha,
+            tipo,
+            fila,
+            procedimientos,
+            totalRegistro
+          });
+        }
+      });
+
+      return registros;
+
+    } catch (error) {
+      console.error('Error extrayendo datos de registros:', error);
+      return [];
+    }
+  }
+
+  // ✅ FUNCIÓN AUXILIAR: Generar HTML responsive optimizado
+  function generarHTMLResponsive(datos) {
+    const {
+      doctor,
+      selectedMonthName,
+      anio,
+      quincenaText,
+      registros,
+      subtotalOriginal,
+      montoDescontar,
+      motivoDescuento,
+      subtotalConDescuento,
+      granTotal
+    } = datos;
+
+    // Estilos CSS optimizados para PDF
+    const estilosResponsive = `
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: Arial, sans-serif; 
+          font-size: 11px; 
+          line-height: 1.3; 
+          color: #333; 
+          margin: 10px;
+        }
+        .pdf-header { 
+          text-align: center; 
+          margin-bottom: 20px; 
+          padding-bottom: 10px; 
+          border-bottom: 2px solid #333; 
+          page-break-after: avoid;
+        }
+        .pdf-header h1 { 
+          font-size: 18px; 
+          margin-bottom: 5px; 
+          color: #000; 
+        }
+        .pdf-header .info { 
+          font-size: 10px; 
+          color: #666; 
+        }
+        .registro { 
+          margin-bottom: 15px; 
+          border: 1px solid #ddd; 
+          page-break-inside: avoid; 
+        }
+        .registro-header { 
+          background: #f5f5f5; 
+          padding: 5px 8px; 
+          border-bottom: 1px solid #ddd; 
+          font-weight: bold; 
+        }
+        .tabla-proc { 
+          width: 100%; 
+          border-collapse: collapse; 
+          font-size: 9px; 
+        }
+        .tabla-proc th, .tabla-proc td { 
+          border: 1px solid #ddd; 
+          padding: 3px 5px; 
+          text-align: left; 
+        }
+        .tabla-proc th { 
+          background: #FE7743; 
+          color: white;
+          font-weight: bold; 
+          font-size: 8px; 
+        }
+        .tabla-proc td.num { text-align: right; }
+        .tabla-proc .total-row { 
+          background: #f9f9f9; 
+          font-weight: bold; 
+        }
+        .resumen { 
+          margin-top: 20px; 
+          padding: 10px; 
+          background: #f9f9f9; 
+          border: 1px solid #ddd; 
+          page-break-inside: avoid; 
+        }
+        .resumen h3 { 
+          font-size: 12px; 
+          margin-bottom: 8px; 
+          color: #000; 
+        }
+        .resumen table { 
+          width: 100%; 
+          border-collapse: collapse; 
+        }
+        .resumen td { 
+          padding: 4px 8px; 
+          border-bottom: 1px solid #ddd; 
+        }
+        .resumen .gran-total { 
+          font-weight: bold; 
+          background: #e9e9e9; 
+          border-top: 2px solid #333; 
+        }
+        @media print {
+          body { margin: 0; }
+          .registro { page-break-inside: avoid; }
+        }
+      </style>
+    `;
+
+    // Generar contenido del cuerpo
+    let contenidoRegistros = '';
+
+    registros.forEach(registro => {
+      contenidoRegistros += `
+        <div class="registro">
+          <div class="registro-header">
+            Registro #${registro.numero} - ${registro.fecha} - ${registro.tipo}
+          </div>
+          <table class="tabla-proc">
+            <thead>
+              <tr>
+                <th style="width: 35%;">Procedimiento</th>
+                <th style="width: 8%;">Cant.</th>
+                <th style="width: 15%;">Costo Unit.</th>
+                <th style="width: 15%;">Sin IVA</th>
+                <th style="width: 12%;">IVA (4%)</th>
+                <th style="width: 15%;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      // Agregar procedimientos
+      registro.procedimientos.forEach(proc => {
+        contenidoRegistros += `
+          <tr>
+            <td>${proc.nombre}</td>
+            <td class="num">${proc.cantidad}</td>
+            <td class="num">${proc.costoUnit}</td>
+            <td class="num">${proc.sinIVA}</td>
+            <td class="num">${proc.iva}</td>
+            <td class="num">${proc.total}</td>
+          </tr>
+        `;
+      });
+
+      // Agregar total del registro
+      contenidoRegistros += `
+              <tr class="total-row">
+                <td colspan="3"><strong>Total del registro:</strong></td>
+                <td class="num"><strong>₡${registro.totalRegistro.sinIVA}</strong></td>
+                <td class="num"><strong>₡${registro.totalRegistro.iva}</strong></td>
+                <td class="num"><strong>₡${registro.totalRegistro.total}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `;
+    });
+
+    // Generar sección de resumen
+    const fechaGeneracion = new Date().toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const resumen = `
+      <div class="resumen">
+        <h3>Resumen de Totales</h3>
+        <table>
+          <tr>
+            <td><strong>Subtotal original:</strong></td>
+            <td style="text-align: right;"><strong>₡${subtotalOriginal}</strong></td>
+          </tr>
+          ${parseFloat(montoDescontar) !== 0 ? `
+          <tr>
+            <td>Descuento/Extra aplicado:</td>
+            <td style="text-align: right;">₡${parseFloat(montoDescontar).toFixed(2)}</td>
+          </tr>
+          ${motivoDescuento ? `
+          <tr>
+            <td>Motivo:</td>
+            <td style="text-align: right;">${motivoDescuento}</td>
+          </tr>
+          ` : ''}
+          <tr>
+            <td><strong>Subtotal con ajustes:</strong></td>
+            <td style="text-align: right;"><strong>₡${subtotalConDescuento}</strong></td>
+          </tr>
+          ` : ''}
+          <tr class="gran-total">
+            <td><strong>GRAN TOTAL:</strong></td>
+            <td style="text-align: right;"><strong>₡${granTotal}</strong></td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    // HTML final optimizado
+    const htmlFinal = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Reporte ${doctor} - ${selectedMonthName} ${anio}</title>
+        ${estilosResponsive}
+      </head>
+      <body>
+        <div class="pdf-header">
+          <h1>Reporte de Procedimientos y Consultas</h1>
+          <div class="info">
+            <p><strong>${doctor}</strong> - ${selectedMonthName} ${anio} (${quincenaText})</p>
+            <p>Generado el: ${fechaGeneracion}</p>
+            <p>Total de registros: ${registros.length}</p>
+          </div>
+        </div>
+        
+        ${contenidoRegistros}
+        
+        ${resumen}
+      </body>
+      </html>
+    `;
+
+    return htmlFinal;
+  } function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
     const byteCharacters = atob(b64Data);
     const byteArrays = [];
 
@@ -1521,6 +2218,75 @@
     downloadAnchorNode.remove();
 
     mostrarMensaje("📁 Logs exportados correctamente.", "success");
+  }
+
+  // 🔍 Función para diagnosticar el problema con detalles
+  function diagnosticarProblemaDetalles() {
+    // Capturar parámetros
+    const parametros = {
+      doctor: document.getElementById('doctor').value,
+      mes: parseInt(document.getElementById('mes').value),
+      anio: parseInt(document.getElementById('anio').value),
+      quincena: document.getElementById('quincena').value
+    };
+
+    if (!parametros.doctor) {
+      mostrarMensaje("Por favor, seleccione un doctor primero.", "error");
+      return;
+    }
+
+    mostrarMensaje("🔍 Diagnosticando problema con detalles...", "info");
+
+    google.script.run
+      .withSuccessHandler(function (resultado) {
+        console.log('🔍 DIAGNÓSTICO RECIBIDO:', resultado);
+
+        let mensaje = `
+          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h4 style="color: #273F4F; margin-bottom: 15px;">📋 Diagnóstico Detallado de Registros</h4>
+            <div style="display: grid; grid-template-columns: auto auto; gap: 10px; margin-bottom: 20px;">
+              <strong>Doctor buscado:</strong> <span>${resultado.nombreBuscado}</span>
+              <strong>Nombre normalizado:</strong> <span style="color: #FE7743;">${resultado.nombreNormalizado}</span>
+              <strong>Período:</strong> <span>${resultado.periodo}</span>
+              <strong>Quincena:</strong> <span>${resultado.quincena}</span>
+              <strong>Total de filas:</strong> <span>${resultado.totalFilas}</span>
+              <strong>Registros con nombre coincidente:</strong> <span style="color: ${resultado.registrosConNombreCoincidente > 0 ? '#28a745' : '#dc3545'};">${resultado.registrosConNombreCoincidente}</span>
+              <strong>Registros con fecha correcta:</strong> <span style="color: ${resultado.registrosConFechaCorrecta > 0 ? '#28a745' : '#dc3545'};">${resultado.registrosConFechaCorrecta}</span>
+              <strong>Registros con quincena correcta:</strong> <span style="color: ${resultado.registrosConQuincenaCorrecta > 0 ? '#28a745' : '#dc3545'};">${resultado.registrosConQuincenaCorrecta}</span>
+              <strong>Registros finales encontrados:</strong> <span style="color: ${resultado.registrosEncontrados > 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${resultado.registrosEncontrados}</span>
+            </div>
+            
+            <div style="margin-top: 20px;">
+              <h5 style="color: #273F4F;">🔍 Ejemplos de nombres en la hoja:</h5>
+              <ul style="max-height: 200px; overflow-y: auto; background-color: white; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px;">
+                ${resultado.ejemplosNombres.map(n => `<li>${n}</li>`).join('')}
+              </ul>
+            </div>
+
+            <div style="margin-top: 20px; padding: 15px; background-color: ${resultado.registrosEncontrados > 0 ? '#d4edda' : '#f8d7da'}; border-radius: 4px;">
+              <strong>Mensaje:</strong> ${resultado.mensaje}
+            </div>
+          </div>
+        `;
+
+        document.getElementById('resultado').innerHTML = mensaje;
+
+        // Análisis automático del problema
+        if (resultado.registrosConNombreCoincidente === 0) {
+          mostrarMensaje("❌ PROBLEMA: No se encontraron registros con nombre coincidente. Revisa los ejemplos de nombres en la hoja.", "error");
+        } else if (resultado.registrosConFechaCorrecta === 0) {
+          mostrarMensaje("❌ PROBLEMA: Se encontraron registros con el nombre, pero ninguno tiene la fecha correcta.", "error");
+        } else if (resultado.registrosConQuincenaCorrecta === 0) {
+          mostrarMensaje("❌ PROBLEMA: Se encontraron registros con nombre y fecha, pero ninguno está en la quincena correcta.", "error");
+        } else {
+          mostrarMensaje("✅ Diagnóstico completado - se encontraron registros válidos", "success");
+        }
+      })
+      .withFailureHandler(function (error) {
+        console.error('❌ Error en diagnóstico:', error);
+        mostrarMensaje("❌ Error en diagnóstico: " + error.message, "error");
+      })
+      .diagnosticarDetalleRegistros(parametros.doctor, parametros.mes, parametros.anio, parametros.quincena);
   }
 
 </script>
