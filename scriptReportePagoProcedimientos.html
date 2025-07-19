@@ -1075,13 +1075,28 @@
           `;
         });
 
+        // Función auxiliar para formatear moneda en PDF
+        const formatearMonedaPDF = (valor) => {
+          if (!valor || valor === '0.00' || valor === 0) {
+            return '0,00';
+          }
+          const num = typeof valor === 'string' ? parseFloat(valor) : valor;
+          if (isNaN(num)) return '0,00';
+
+          // Formatear con separadores de miles (.) y decimales (,)
+          return num.toLocaleString('es-ES', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+        };
+
         // Agregar total del registro
         contenidoPaginado += `
                 <tr class="total-row">
                   <td colspan="3"><strong>Total del registro:</strong></td>
-                  <td class="num"><strong>₡${registro.totalRegistro.sinIVA}</strong></td>
-                  <td class="num"><strong>₡${registro.totalRegistro.iva}</strong></td>
-                  <td class="num"><strong>₡${registro.totalRegistro.total}</strong></td>
+                  <td class="num"><strong>₡${formatearMonedaPDF(registro.totalRegistro.sinIVA)}</strong></td>
+                  <td class="num"><strong>₡${formatearMonedaPDF(registro.totalRegistro.iva)}</strong></td>
+                  <td class="num"><strong>₡${formatearMonedaPDF(registro.totalRegistro.total)}</strong></td>
                 </tr>
               </tbody>
             </table>
@@ -1094,6 +1109,32 @@
       `;
     }
 
+    // Función auxiliar para formatear valores de resumen (paginado)
+    const formatearResumenPaginado = (valor) => {
+      console.log('formatearResumenPaginado recibió:', valor, 'tipo:', typeof valor);
+      if (!valor) return '0,00';
+
+      // Si es un número, formatearlo directamente
+      if (typeof valor === 'number') {
+        const resultado = valor.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+        console.log('formatearResumenPaginado resultado (número):', resultado);
+        return resultado;
+      }
+
+      // Si es string, extraer el número correctamente
+      const num = parseFloat(valor.toString().replace(/[^\d.-]/g, ''));
+      if (isNaN(num)) return '0,00';
+      const resultado = num.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      console.log('formatearResumenPaginado resultado (string):', resultado);
+      return resultado;
+    };
+
     // Agregar resumen final en la última página
     contenidoPaginado += `
       <div class="resumen-final">
@@ -1101,27 +1142,35 @@
         <table>
           <tr>
             <td><strong>Subtotal original:</strong></td>
-            <td style="text-align: right;"><strong>₡${subtotalOriginal}</strong></td>
+            <td style="text-align: right;"><strong>₡${formatearResumenPaginado(subtotalOriginal)}</strong></td>
           </tr>
-          ${parseFloat(montoDescontar) !== 0 ? `
+          ${montoDescontar > 0 ? `
           <tr>
-            <td>Descuento/Extra aplicado:</td>
-            <td style="text-align: right;">₡${parseFloat(montoDescontar).toFixed(2)}</td>
-          </tr>
-          ${motivoDescuento ? `
-          <tr>
-            <td>Motivo:</td>
-            <td style="text-align: right;">${motivoDescuento}</td>
+            <td>Descuento aplicado:</td>
+            <td style="text-align: right;">-₡${formatearResumenPaginado(montoDescontar)}</td>
           </tr>
           ` : ''}
+          ${montoExtra > 0 ? `
+          <tr>
+            <td>Extra aplicado:</td>
+            <td style="text-align: right;">+₡${formatearResumenPaginado(montoExtra)}</td>
+          </tr>
+          ` : ''}
+          ${(montoDescontar > 0 || montoExtra > 0) && motivoDescuento ? `
+          <tr>
+            <td><strong>Motivo:</strong></td>
+            <td style="text-align: right; font-style: italic;">${motivoDescuento}</td>
+          </tr>
+          ` : ''}
+          ${(montoDescontar > 0 || montoExtra > 0) ? `
           <tr>
             <td><strong>Subtotal con ajustes:</strong></td>
-            <td style="text-align: right;"><strong>₡${subtotalConDescuento}</strong></td>
+            <td style="text-align: right;"><strong>₡${formatearResumenPaginado(subtotalConDescuento)}</strong></td>
           </tr>
           ` : ''}
           <tr class="gran-total">
             <td><strong>GRAN TOTAL:</strong></td>
-            <td style="text-align: right;"><strong>₡${granTotal}</strong></td>
+            <td style="text-align: right;"><strong>₡${formatearResumenPaginado(granTotal)}</strong></td>
           </tr>
         </table>
       </div>
@@ -1185,14 +1234,73 @@
       const selectedMonthName = monthNames[parseInt(mes) - 1];
       const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
 
-      // Obtener información de los totales
-      const subtotalOriginal = document.getElementById('subtotalOriginal')?.textContent || '0.00';
-      const montoDescontar = document.getElementById('montoDescontar')?.value || '0';
-      const motivoDescuento = document.getElementById('motivoDescuento')?.value || '';
-      const subtotalConDescuento = document.getElementById('subtotalConDescuento')?.textContent || '0.00';
-      const granTotal = document.getElementById('granTotal')?.textContent || '0.00';
+      // Obtener información de los totales (extraer valores numéricos limpios)
+      const subtotalOriginalText = document.getElementById('subtotalOriginal')?.textContent || '0.00';
+      const subtotalConDescuentoText = document.getElementById('subtotalConDescuento')?.textContent || '0.00';
+      const granTotalText = document.getElementById('granTotal')?.textContent || '0.00';
 
-      // Extraer datos de los registros para procesamiento optimizado
+      // Función auxiliar para extraer número de formato español (1.234.567,89)
+      const extraerNumeroEspanol = (texto) => {
+        if (!texto) return 0;
+        // Eliminar símbolo de moneda y espacios
+        let numero = texto.replace(/[₡\s]/g, '');
+
+        // Si el texto tiene formato español (puntos como separadores de miles, coma como decimal)
+        if (numero.includes(',')) {
+          // Separar parte entera y decimal
+          const partes = numero.split(',');
+          if (partes.length === 2) {
+            // Eliminar puntos de la parte entera (separadores de miles)
+            const parteEntera = partes[0].replace(/\./g, '');
+            const parteDecimal = partes[1];
+            numero = parteEntera + '.' + parteDecimal;
+          }
+        } else {
+          // Si no hay coma, eliminar puntos (podrían ser separadores de miles)
+          numero = numero.replace(/\./g, '');
+        }
+
+        const resultado = parseFloat(numero) || 0;
+        console.log(`extraerNumeroEspanol: "${texto}" -> ${resultado}`);
+        return resultado;
+      };
+
+      // Limpiar y convertir a números los valores del DOM usando formato español
+      const subtotalOriginal = extraerNumeroEspanol(subtotalOriginalText);
+      const montoDescontar = parseFloat(document.getElementById('montoDescontar')?.value || '0') || 0;
+      const montoExtra = parseFloat(document.getElementById('montoExtra')?.value || '0') || 0;
+      const motivoDescuento = document.getElementById('motivoDescuento')?.value || '';
+      const subtotalConDescuento = extraerNumeroEspanol(subtotalConDescuentoText);
+      const granTotal = extraerNumeroEspanol(granTotalText);
+
+      // 🐛 DEBUG: Verificar valores limpios para PDF
+      console.log('=== VALORES PARA PDF (LIMPIOS) ===');
+      console.log('subtotalOriginalText:', subtotalOriginalText);
+      console.log('subtotalOriginal (limpio):', subtotalOriginal);
+      console.log('montoDescontar:', montoDescontar);
+      console.log('montoExtra:', montoExtra);
+      console.log('motivoDescuento:', motivoDescuento);
+      console.log('subtotalConDescuentoText:', subtotalConDescuentoText);
+      console.log('subtotalConDescuento (limpio):', subtotalConDescuento);
+      console.log('granTotalText:', granTotalText);
+      console.log('granTotal (limpio):', granTotal);
+
+      // 🔍 DEBUG ESPECÍFICO para condiciones de descuento
+      console.log('=== DEBUG CONDICIONES DESCUENTO ===');
+      console.log('montoDescontar > 0:', montoDescontar > 0);
+      console.log('montoExtra > 0:', montoExtra > 0);
+      console.log('Tiene descuento?:', montoDescontar > 0);
+      console.log('Tiene extra?:', montoExtra > 0);
+      console.log('motivoDescuento existe:', !!motivoDescuento);
+      console.log('===============================');
+
+      // 🔍 DIAGNÓSTICO ADICIONAL: Verificar si los valores del DOM son los esperados
+      const testRegex = /[\d,.]+/g;
+      const numbersInOriginal = subtotalOriginalText.match(testRegex);
+      const numbersInGranTotal = granTotalText.match(testRegex);
+      console.log('Números encontrados en subtotalOriginalText:', numbersInOriginal);
+      console.log('Números encontrados en granTotalText:', numbersInGranTotal);
+      console.log('================================');      // Extraer datos de los registros para procesamiento optimizado
       const registros = extraerDatosRegistros();
 
       if (!registros || registros.length === 0) {
@@ -1209,6 +1317,7 @@
         registros,
         subtotalOriginal,
         montoDescontar,
+        montoExtra,
         motivoDescuento,
         subtotalConDescuento,
         granTotal
@@ -1260,41 +1369,37 @@
           }
         });
 
-        // Extraer total del registro
-        const totalRow = registroEl.querySelector('.total-registro');
-        let totalRegistro = { sinIVA: '0.00', iva: '0.00', total: '0.00' };
+        // Calcular total del registro SIEMPRE desde los procedimientos (más confiable)
+        let totalSinIva = 0;
+        let totalIva = 0;
+        let totalConIva = 0;
 
-        if (totalRow) {
-          const totalCells = totalRow.querySelectorAll('td');
-          if (totalCells.length >= 6) {
-            totalRegistro = {
-              sinIVA: totalCells[3]?.textContent?.replace('₡', '')?.replace(/[^\d.,]/g, '') || '0.00',
-              iva: totalCells[4]?.textContent?.replace('₡', '')?.replace(/[^\d.,]/g, '') || '0.00',
-              total: totalCells[5]?.textContent?.replace('₡', '')?.replace(/[^\d.,]/g, '') || '0.00'
-            };
+        // Función auxiliar para limpiar y convertir valores monetarios
+        const limpiarYConvertir = (texto) => {
+          if (!texto) return 0;
+          // Remover símbolos y espacios, mantener solo números, puntos y comas
+          let limpio = texto.replace(/₡/g, '').replace(/\s/g, '').replace(/[^0-9.,]/g, '');
+          // Convertir comas decimales en puntos si es necesario
+          if (limpio.includes(',') && !limpio.includes('.')) {
+            limpio = limpio.replace(',', '.');
+          } else if (limpio.includes(',') && limpio.includes('.')) {
+            // Si tiene ambos, asumir que la coma es separador de miles
+            limpio = limpio.replace(/,/g, '');
           }
-        } else {
-          // Si no encuentra la fila de total, calcularlo desde los procedimientos
-          let totalSinIva = 0;
-          let totalIva = 0;
-          let totalConIva = 0;
+          return parseFloat(limpio) || 0;
+        };
 
-          procedimientos.forEach(proc => {
-            const sinIvaNum = parseFloat(proc.sinIVA.replace('₡', '').replace(/[^\d.,]/g, '').replace(',', '')) || 0;
-            const ivaNum = parseFloat(proc.iva.replace('₡', '').replace(/[^\d.,]/g, '').replace(',', '')) || 0;
-            const totalNum = parseFloat(proc.total.replace('₡', '').replace(/[^\d.,]/g, '').replace(',', '')) || 0;
+        procedimientos.forEach(proc => {
+          totalSinIva += limpiarYConvertir(proc.sinIVA);
+          totalIva += limpiarYConvertir(proc.iva);
+          totalConIva += limpiarYConvertir(proc.total);
+        });
 
-            totalSinIva += sinIvaNum;
-            totalIva += ivaNum;
-            totalConIva += totalNum;
-          });
-
-          totalRegistro = {
-            sinIVA: totalSinIva.toFixed(2),
-            iva: totalIva.toFixed(2),
-            total: totalConIva.toFixed(2)
-          };
-        }
+        const totalRegistro = {
+          sinIVA: totalSinIva.toFixed(2),
+          iva: totalIva.toFixed(2),
+          total: totalConIva.toFixed(2)
+        };
 
         if (procedimientos.length > 0) {
           registros.push({
@@ -1326,6 +1431,7 @@
       registros,
       subtotalOriginal,
       montoDescontar,
+      montoExtra,
       motivoDescuento,
       subtotalConDescuento,
       granTotal
@@ -1425,6 +1531,21 @@
     // Generar contenido del cuerpo
     let contenidoRegistros = '';
 
+    // Función auxiliar para formatear moneda en PDF
+    const formatearMonedaPDF = (valor) => {
+      if (!valor || valor === '0.00' || valor === 0) {
+        return '0,00';
+      }
+      const num = typeof valor === 'string' ? parseFloat(valor) : valor;
+      if (isNaN(num)) return '0,00';
+
+      // Formatear con separadores de miles (.) y decimales (,)
+      return num.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    };
+
     registros.forEach(registro => {
       contenidoRegistros += `
         <div class="registro">
@@ -1463,9 +1584,9 @@
       contenidoRegistros += `
               <tr class="total-row">
                 <td colspan="3"><strong>Total del registro:</strong></td>
-                <td class="num"><strong>₡${registro.totalRegistro.sinIVA}</strong></td>
-                <td class="num"><strong>₡${registro.totalRegistro.iva}</strong></td>
-                <td class="num"><strong>₡${registro.totalRegistro.total}</strong></td>
+                <td class="num"><strong>₡${formatearMonedaPDF(registro.totalRegistro.sinIVA)}</strong></td>
+                <td class="num"><strong>₡${formatearMonedaPDF(registro.totalRegistro.iva)}</strong></td>
+                <td class="num"><strong>₡${formatearMonedaPDF(registro.totalRegistro.total)}</strong></td>
               </tr>
             </tbody>
           </table>
@@ -1482,33 +1603,67 @@
       minute: '2-digit'
     });
 
+    // Función auxiliar para formatear valores de resumen
+    const formatearResumen = (valor) => {
+      console.log('formatearResumen recibió:', valor, 'tipo:', typeof valor);
+      if (!valor) return '0,00';
+
+      // Si es un número, formatearlo directamente
+      if (typeof valor === 'number') {
+        const resultado = valor.toLocaleString('es-ES', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+        console.log('formatearResumen resultado (número):', resultado);
+        return resultado;
+      }
+
+      // Si es string, extraer el número correctamente
+      const num = parseFloat(valor.toString().replace(/[^\d.-]/g, ''));
+      if (isNaN(num)) return '0,00';
+      const resultado = num.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      console.log('formatearResumen resultado (string):', resultado);
+      return resultado;
+    };
+
     const resumen = `
       <div class="resumen">
         <h3>Resumen de Totales</h3>
         <table>
           <tr>
             <td><strong>Subtotal original:</strong></td>
-            <td style="text-align: right;"><strong>₡${subtotalOriginal}</strong></td>
+            <td style="text-align: right;"><strong>₡${formatearResumen(subtotalOriginal)}</strong></td>
           </tr>
-          ${parseFloat(montoDescontar) !== 0 ? `
+          ${montoDescontar > 0 ? `
           <tr>
-            <td>Descuento/Extra aplicado:</td>
-            <td style="text-align: right;">₡${parseFloat(montoDescontar).toFixed(2)}</td>
-          </tr>
-          ${motivoDescuento ? `
-          <tr>
-            <td>Motivo:</td>
-            <td style="text-align: right;">${motivoDescuento}</td>
+            <td>Descuento aplicado:</td>
+            <td style="text-align: right;">-₡${formatearResumen(montoDescontar)}</td>
           </tr>
           ` : ''}
+          ${montoExtra > 0 ? `
+          <tr>
+            <td>Extra aplicado:</td>
+            <td style="text-align: right;">+₡${formatearResumen(montoExtra)}</td>
+          </tr>
+          ` : ''}
+          ${(montoDescontar > 0 || montoExtra > 0) && motivoDescuento ? `
+          <tr>
+            <td><strong>Motivo:</strong></td>
+            <td style="text-align: right; font-style: italic;">${motivoDescuento}</td>
+          </tr>
+          ` : ''}
+          ${(montoDescontar > 0 || montoExtra > 0) ? `
           <tr>
             <td><strong>Subtotal con ajustes:</strong></td>
-            <td style="text-align: right;"><strong>₡${subtotalConDescuento}</strong></td>
+            <td style="text-align: right;"><strong>₡${formatearResumen(subtotalConDescuento)}</strong></td>
           </tr>
           ` : ''}
           <tr class="gran-total">
             <td><strong>GRAN TOTAL:</strong></td>
-            <td style="text-align: right;"><strong>₡${granTotal}</strong></td>
+            <td style="text-align: right;"><strong>₡${formatearResumen(granTotal)}</strong></td>
           </tr>
         </table>
       </div>
