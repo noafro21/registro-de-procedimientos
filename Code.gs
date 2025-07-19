@@ -315,71 +315,151 @@ function normalizarNombre(str) {
 }
 
 /**
+ * FUNCIÓN DE PRUEBA: Verificar acceso a hoja Personal
+ * Esta función ayuda a diagnosticar problemas de carga de personal
+ */
+function probarAccesoPersonal() {
+  try {
+    Logger.log("🧪 INICIANDO PRUEBA DE ACCESO A PERSONAL");
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    Logger.log(`📊 Spreadsheet obtenido: ${ss.getName()}`);
+
+    const hojas = ss.getSheets();
+    Logger.log(
+      `📋 Hojas disponibles: ${hojas.map((h) => h.getName()).join(", ")}`
+    );
+
+    const hojaPersonal = ss.getSheetByName("Personal");
+    if (!hojaPersonal) {
+      Logger.log("❌ ERROR: Hoja 'Personal' no encontrada");
+      return {
+        error: "Hoja Personal no encontrada",
+        hojas: hojas.map((h) => h.getName()),
+      };
+    }
+
+    Logger.log("✅ Hoja 'Personal' encontrada");
+
+    const datos = hojaPersonal.getDataRange().getValues();
+    Logger.log(`📊 Datos leídos: ${datos.length} filas`);
+
+    if (datos.length > 0) {
+      Logger.log(`📋 Encabezados: ${datos[0].join(" | ")}`);
+
+      if (datos.length > 1) {
+        Logger.log("📝 Primeras 3 filas de datos:");
+        for (let i = 1; i < Math.min(4, datos.length); i++) {
+          Logger.log(`   Fila ${i + 1}: ${datos[i].slice(0, 7).join(" | ")}`);
+        }
+      } else {
+        Logger.log("⚠️ Solo hay encabezados, no hay datos");
+      }
+    }
+
+    Logger.log("🧪 PRUEBA COMPLETADA");
+    return {
+      success: true,
+      filas: datos.length,
+      encabezados: datos[0] || [],
+      primeraFila: datos[1] || [],
+    };
+  } catch (error) {
+    Logger.log(`❌ ERROR en probarAccesoPersonal: ${error.message}`);
+    Logger.log(`Stack trace: ${error.stack}`);
+    return { error: error.message, stack: error.stack };
+  }
+}
+
+/**
  * Obtiene una lista de nombres de personal de la hoja 'Personal', filtrando por columnas específicas.
  * @param {number[]} columnIndexes Un array de índices de columnas (base 0) de la hoja 'Personal' a incluir.
  * @returns {string[]} Un array de nombres de personal únicos y ordenados.
  */
 function obtenerPersonalFiltrado(columnIndexes) {
+  Logger.log("🔍 INICIANDO obtenerPersonalFiltrado()");
+  Logger.log(
+    `📥 Parámetros recibidos: columnIndexes = ${JSON.stringify(columnIndexes)}`
+  );
+
   if (!Array.isArray(columnIndexes)) {
     columnIndexes = [0, 1, 2];
     Logger.log(
-      "ADVERTENCIA: columnIndexes no recibido, usando [0,1,2] por defecto"
+      "⚠️ ADVERTENCIA: columnIndexes no recibido, usando [0,1,2] por defecto"
     );
   }
 
   try {
     Logger.log(
-      "obtenerPersonalFiltrado llamado con columnIndexes: " + columnIndexes
+      "🔧 obtenerPersonalFiltrado llamado con columnIndexes: " + columnIndexes
     );
 
     // Verificar que columnIndexes sea un array válido
     if (!columnIndexes || !Array.isArray(columnIndexes)) {
-      Logger.log("ERROR: columnIndexes no es un array válido");
+      Logger.log("❌ ERROR: columnIndexes no es un array válido");
       return []; // Devolver array vacío en lugar de lanzar error
     }
 
     const hoja =
       SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Personal");
     if (!hoja) {
-      Logger.log("ERROR: La hoja 'Personal' no existe.");
+      Logger.log("❌ ERROR: La hoja 'Personal' no existe.");
       throw new Error("❌ La hoja 'Personal' no existe.");
     }
 
-    Logger.log("Hoja 'Personal' encontrada");
+    Logger.log("✅ Hoja 'Personal' encontrada");
     const datos = hoja.getDataRange().getValues();
-    Logger.log("Datos obtenidos de la hoja 'Personal'. Filas: " + datos.length);
+    Logger.log(
+      `📊 Datos obtenidos de la hoja 'Personal'. Filas: ${datos.length}`
+    );
+
+    if (datos.length <= 1) {
+      Logger.log("⚠️ No hay datos en la hoja Personal o solo hay encabezados");
+      return [];
+    }
+
+    // Mostrar encabezados para debugging
+    Logger.log(`📋 Encabezados: ${datos[0].join(", ")}`);
 
     const personal = new Set();
     for (let i = 1; i < datos.length; i++) {
       // Iterar desde la segunda fila (ignorar encabezado)
       const fila = datos[i];
+      Logger.log(
+        `   Procesando fila ${i + 1}: ${JSON.stringify(fila.slice(0, 7))}`
+      ); // Solo mostrar primeras 7 columnas
+
       columnIndexes.forEach((colIndex) => {
         // Verificar que el índice de columna sea válido
         if (colIndex >= 0 && colIndex < fila.length) {
           const nombre = fila[colIndex];
+          Logger.log(
+            `     Columna ${colIndex}: "${nombre}" (tipo: ${typeof nombre})`
+          );
+
           if (nombre && typeof nombre === "string" && nombre.trim()) {
-            personal.add(nombre.trim());
+            const nombreLimpio = nombre.trim();
+            personal.add(nombreLimpio);
             Logger.log(
-              "Añadido personal: " +
-                nombre.trim() +
-                " de la columna " +
-                colIndex
+              `     ✅ Añadido personal: "${nombreLimpio}" de la columna ${colIndex}`
             );
           }
         } else {
           Logger.log(
-            "ADVERTENCIA: Índice de columna fuera de rango: " + colIndex
+            `     ⚠️ ADVERTENCIA: Índice de columna fuera de rango: ${colIndex} (fila tiene ${fila.length} columnas)`
           );
         }
       });
     }
 
     const resultado = [...personal].sort();
-    Logger.log("Nombres de personal filtrados: " + resultado.join(", "));
+    Logger.log(`🎯 RESULTADO: ${resultado.length} personas encontradas`);
+    Logger.log("📋 Nombres de personal filtrados: " + resultado.join(", "));
 
     return resultado;
   } catch (error) {
-    Logger.log("ERROR en obtenerPersonalFiltrado: " + error.message);
+    Logger.log("❌ ERROR en obtenerPersonalFiltrado: " + error.message);
+    Logger.log("Stack trace: " + error.stack);
     // En lugar de propagar el error, devolver un array vacío
     return [];
   }
@@ -758,13 +838,46 @@ function calcularCostos(nombre, mes, anio, quincena) {
 
   const preciosPorProcedimiento = {};
 
-  preciosDatos.slice(1).forEach((fila) => {
-    preciosPorProcedimiento[fila[0]] = {
+  Logger.log(`📊 PROCESANDO HOJA DE PRECIOS:`);
+
+  preciosDatos.slice(1).forEach((fila, index) => {
+    const nombreProcedimiento = fila[0];
+    Logger.log(
+      `   Fila ${index + 2}: "${nombreProcedimiento}" -> DoctorLV: ${
+        fila[1]
+      }, DoctorSab: ${fila[2]}, Anest: ${fila[3]}, Tecnico: ${fila[4]}`
+    );
+
+    preciosPorProcedimiento[nombreProcedimiento] = {
       doctorLV: fila[1] || 0,
       doctorSab: fila[2] || 0,
       anest: fila[3] || 0,
       tecnico: fila[4] || 0,
     };
+  });
+
+  Logger.log(`🔍 VERIFICANDO PRECIOS PARA PROCEDIMIENTOS FRIA:`);
+  Logger.log(
+    `   "Proc. Terapéutico Fría Menor": ${JSON.stringify(
+      preciosPorProcedimiento["Proc. Terapéutico Fría Menor"]
+    )}`
+  );
+  Logger.log(
+    `   "Proc. Terapéutico Fría Mayor": ${JSON.stringify(
+      preciosPorProcedimiento["Proc. Terapéutico Fría Mayor"]
+    )}`
+  );
+
+  Logger.log(`📋 TODOS LOS PROCEDIMIENTOS DISPONIBLES EN PRECIOS:`);
+  Object.keys(preciosPorProcedimiento).forEach((nombre) => {
+    if (
+      nombre.toLowerCase().includes("fría") ||
+      nombre.toLowerCase().includes("fria") ||
+      nombre.toLowerCase().includes("terapeutico") ||
+      nombre.toLowerCase().includes("terapéutico")
+    ) {
+      Logger.log(`   🔍 ENCONTRADO RELACIONADO: "${nombre}"`);
+    }
   });
 
   function normalizarNombre(str) {
@@ -929,8 +1042,12 @@ function calcularCostos(nombre, mes, anio, quincena) {
   };
 
   Object.keys(mapeoProcedimientos).forEach((key) => {
+    const nombreTecnico = mapeoProcedimientos[key];
+    // Los nombres del mapeo ya son los nombres finales para mostrar
+    const nombreParaMostrar = nombreTecnico;
+
     resumen.lv[key] = {
-      nombre: mapeoProcedimientos[key],
+      nombre: nombreParaMostrar,
       cantidad: 0,
       costo_unitario: 0,
       subtotal: 0,
@@ -938,7 +1055,7 @@ function calcularCostos(nombre, mes, anio, quincena) {
       total_con_iva: 0,
     };
     resumen.sab[key] = {
-      nombre: mapeoProcedimientos[key],
+      nombre: nombreParaMostrar,
       cantidad: 0,
       costo_unitario: 0,
       subtotal: 0,
@@ -1052,6 +1169,29 @@ function calcularCostos(nombre, mes, anio, quincena) {
           procedimientosEnFila++;
           const procNombre = mapeoProcedimientos[key];
 
+          // 🎨 Función para humanizar nombres de procedimientos para mostrar al usuario
+          const humanizarNombreProcedimiento = (nombre) => {
+            // Ya no necesitamos transformaciones porque los nombres del mapeo son los finales
+            return nombre;
+          };
+
+          const nombreParaMostrar = humanizarNombreProcedimiento(procNombre);
+
+          // 🐛 DEBUG ESPECÍFICO para procedimientos FRÍA
+          if (key === "asa_fria" || key === "asa_fria2") {
+            Logger.log(`🔍 PROCESANDO ${key}:`);
+            Logger.log(`   Nombre técnico: "${procNombre}"`);
+            Logger.log(`   Nombre para mostrar: "${nombreParaMostrar}"`);
+            Logger.log(`   Cantidad: ${cantidad}`);
+            Logger.log(
+              `   Precios disponibles: ${JSON.stringify(
+                preciosPorProcedimiento[procNombre]
+              )}`
+            );
+            Logger.log(`   Tipo personal: ${tipoPersonal}`);
+            Logger.log(`   Es sábado: ${esSabado}`);
+          }
+
           const precios = preciosPorProcedimiento[procNombre] || {};
           let costo = 0;
 
@@ -1061,6 +1201,15 @@ function calcularCostos(nombre, mes, anio, quincena) {
             costo = precios.anest || 0;
           } else if (tipoPersonal === "Técnico") {
             costo = precios.tecnico || 0;
+          }
+
+          // 🐛 DEBUG ESPECÍFICO para procedimientos FRÍA
+          if (key === "asa_fria" || key === "asa_fria2") {
+            Logger.log(`   Costo calculado: ${costo}`);
+            Logger.log(`   precios.doctorLV: ${precios.doctorLV}`);
+            Logger.log(`   precios.doctorSab: ${precios.doctorSab}`);
+            Logger.log(`   precios.anest: ${precios.anest}`);
+            Logger.log(`   precios.tecnico: ${precios.tecnico}`);
           }
 
           // Validar que el costo sea un número válido
@@ -1081,7 +1230,7 @@ function calcularCostos(nombre, mes, anio, quincena) {
 
           // ✅ NUEVO: Agregar procedimiento al detalle del registro
           detalleRegistro.procedimientos.push({
-            nombre: procNombre,
+            nombre: nombreParaMostrar, // 🎨 Usar nombre humanizado para mostrar
             cantidad: cantidad,
             costoUnitario: costo,
             subtotal: subtotal,
@@ -3188,28 +3337,47 @@ function obtenerAnestesiologos() {
  */
 function obtenerDoctores() {
   try {
+    Logger.log("🔍 INICIANDO obtenerDoctores()");
+
     const hoja =
       SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Personal");
     if (!hoja) {
+      Logger.log("❌ La hoja 'Personal' no existe.");
       throw new Error("❌ La hoja 'Personal' no existe.");
     }
 
+    Logger.log("✅ Hoja 'Personal' encontrada");
     const datos = hoja.getDataRange().getValues();
+    Logger.log(`📊 Datos obtenidos. Total filas: ${datos.length}`);
+
+    if (datos.length <= 1) {
+      Logger.log("⚠️ No hay datos en la hoja Personal o solo hay encabezados");
+      return [];
+    }
+
     const doctores = new Set();
 
     // Solo columna 0 (Doctores)
     for (let i = 1; i < datos.length; i++) {
       const nombre = datos[i][0]; // Columna A
+      Logger.log(`   Fila ${i + 1}: "${nombre}" (tipo: ${typeof nombre})`);
+
       if (nombre && typeof nombre === "string" && nombre.trim()) {
-        doctores.add(nombre.trim());
+        const nombreLimpio = nombre.trim();
+        doctores.add(nombreLimpio);
+        Logger.log(`   ✅ Agregado doctor: "${nombreLimpio}"`);
+      } else {
+        Logger.log(`   ⏭️ Saltando fila ${i + 1}: valor inválido`);
       }
     }
 
     const resultado = [...doctores].sort();
-    Logger.log("Doctores encontrados: " + resultado.join(", "));
+    Logger.log(`🎯 RESULTADO: ${resultado.length} doctores encontrados`);
+    Logger.log("📋 Lista final: " + resultado.join(", "));
     return resultado;
   } catch (error) {
-    Logger.log("ERROR en obtenerDoctores: " + error.message);
+    Logger.log("❌ ERROR en obtenerDoctores: " + error.message);
+    Logger.log("Stack trace: " + error.stack);
     return [];
   }
 }
