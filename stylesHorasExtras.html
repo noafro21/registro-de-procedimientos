@@ -42,6 +42,7 @@
 
   input[type="date"],
   input[type="number"],
+  textarea,
   select {
     width: 100%;
     padding: 12px;
@@ -52,12 +53,38 @@
     transition: border-color 0.3s ease;
   }
 
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: 'Arial', sans-serif;
+  }
+
   input[type="date"]:focus,
   input[type="number"]:focus,
+  textarea:focus,
   select:focus {
     border-color: #273F4F;
     outline: none;
     box-shadow: 0 0 0 2px rgba(39, 63, 79, 0.2);
+  }
+
+  .checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+  }
+
+  .checkbox-container input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    transform: scale(1.2);
+  }
+
+  .checkbox-container label {
+    margin: 0;
+    font-weight: normal;
+    cursor: pointer;
   }
 
   input[type="submit"] {

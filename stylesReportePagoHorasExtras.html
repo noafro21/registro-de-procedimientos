@@ -46,7 +46,8 @@
   }
 
   select,
-  input[type="email"] {
+  input[type="email"],
+  input[type="number"] {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
@@ -54,6 +55,31 @@
     font-size: 16px;
     box-sizing: border-box;
     margin-bottom: 10px;
+  }
+
+  /* Estilos para los controles de cálculo */
+  .calculation-controls {
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 1px solid #e9ecef;
+  }
+
+  .calculation-controls h3 {
+    margin-top: 0;
+    color: #273F4F;
+    border-bottom: 2px solid #FE7743;
+  }
+
+  .calculation-controls label {
+    margin-top: 15px;
+  }
+
+  .calculation-controls input[type="checkbox"] {
+    width: auto;
+    margin-right: 10px;
+    transform: scale(1.2);
   }
 
   button {
@@ -207,5 +233,257 @@
     border-radius: 8px;
     text-align: center;
     margin-bottom: 15px;
+  }
+
+  /* === NUEVOS ESTILOS PARA REPORTE MEJORADO === */
+
+  /* Botones de vista */
+  #view-controls {
+    text-align: center;
+    margin: 20px 0;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .view-button {
+    padding: 10px 20px;
+    border: 2px solid #273F4F;
+    background-color: transparent;
+    color: #273F4F;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+  }
+
+  .view-button:hover {
+    background-color: #273F4F;
+    color: white;
+  }
+
+  .view-button.active {
+    background-color: #FE7743;
+    border-color: #FE7743;
+    color: white;
+  }
+
+  /* Header del registro */
+  .registro-header {
+    text-align: center;
+    border-bottom: 3px solid #FE7743;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+  }
+
+  .registro-header h3 {
+    font-size: 22px;
+    margin: 0;
+    color: #273F4F;
+    font-weight: bold;
+    border: none;
+  }
+
+  .registro-header h4 {
+    font-size: 16px;
+    margin: 5px 0 15px 0;
+    color: #FE7743;
+    font-weight: normal;
+  }
+
+  .info-general {
+    text-align: left;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+  }
+
+  .info-general p {
+    margin: 8px 0;
+    font-size: 14px;
+  }
+
+  /* Detalle de registros */
+  .detalle-registros {
+    margin: 30px 0;
+  }
+
+  .detalle-registros h4 {
+    color: #273F4F;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 8px;
+    margin-bottom: 15px;
+  }
+
+  .tabla-detalle {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+
+  .tabla-detalle th {
+    background-color: #273F4F;
+    color: white;
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: bold;
+    border: 1px solid #ddd;
+  }
+
+  .tabla-detalle td {
+    padding: 10px 8px;
+    border: 1px solid #ddd;
+    text-align: center;
+  }
+
+  .tabla-detalle tr:nth-child(even) {
+    background-color: #f8f9fa;
+  }
+
+  .tabla-detalle tr:hover {
+    background-color: #e8f4f8;
+  }
+
+  .tabla-detalle .number {
+    text-align: right;
+    font-weight: bold;
+  }
+
+  .tabla-detalle .currency {
+    text-align: right;
+    font-weight: bold;
+    color: #2e7d32;
+  }
+
+  .tabla-detalle .comentarios {
+    text-align: left;
+    max-width: 150px;
+    word-wrap: break-word;
+    font-style: italic;
+    color: #666;
+  }
+
+  /* Resumen de totales */
+  .resumen-totales {
+    margin: 30px 0;
+    background-color: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #e0e0e0;
+  }
+
+  .resumen-totales h4 {
+    color: #273F4F;
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 18px;
+  }
+
+  .tabla-totales {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .tabla-totales td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .tabla-totales td:first-child {
+    text-align: left;
+    font-weight: normal;
+    color: #273F4F;
+  }
+
+  .tabla-totales td:last-child {
+    text-align: right;
+    font-weight: bold;
+    color: #2e7d32;
+  }
+
+  .tabla-totales .total-final {
+    background-color: #FE7743;
+    color: white;
+    font-size: 16px;
+  }
+
+  .tabla-totales .total-final td {
+    border-bottom: none;
+    padding: 15px;
+  }
+
+  .tabla-totales .total-final td:last-child {
+    color: white;
+  }
+
+  /* Sin registros */
+  .no-records {
+    text-align: center;
+    padding: 40px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    border: 2px dashed #ccc;
+  }
+
+  .no-records h3 {
+    color: #666;
+    margin-bottom: 10px;
+  }
+
+  .no-records p {
+    color: #999;
+    margin: 0;
+  }
+
+  /* Responsive design */
+  @media (max-width: 768px) {
+
+    .tabla-detalle,
+    .tabla-totales {
+      font-size: 11px;
+    }
+
+    .tabla-detalle th,
+    .tabla-detalle td {
+      padding: 8px 4px;
+    }
+
+    .view-button {
+      padding: 8px 15px;
+      font-size: 12px;
+    }
+
+    #view-controls {
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .registro-header h3 {
+      font-size: 18px;
+    }
+
+    .registro-header h4 {
+      font-size: 14px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .tabla-detalle {
+      display: block;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .container,
+    #reportControls,
+    #printableReportContent {
+      padding: 15px;
+    }
   }
 </style>

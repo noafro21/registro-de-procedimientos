@@ -46,7 +46,32 @@
             <option value="1-15">1 al 15</option>
             <option value="16-31">16 al 31</option>
         </select>
+
+        <!-- Campos para cálculos personalizados -->
+        <div class="calculation-controls">
+            <h3>Parámetros de Cálculo</h3>
+            <label for="tarifa_por_hora">Monto por Horas Trabajadas (₡):</label>
+            <input type="number" id="tarifa_por_hora" step="0.01" min="0" value="3500" placeholder="Ejemplo: 3500">
+
+            <label for="aplica_impuesto">Aplicar Impuesto:</label>
+            <input type="checkbox" id="aplica_impuesto" checked onchange="toggleImpuesto()">
+
+            <label for="porcentaje_impuesto">Porcentaje de Impuesto (%):</label>
+            <select id="porcentaje_impuesto">
+                <option value="4">4% - Impuesto Reducido</option>
+                <option value="13" selected>13% - Impuesto General</option>
+                <option value="0">0% - Sin Impuesto</option>
+            </select>
+        </div>
+
         <button onclick="calcularHorasExtras()">Calcular Reporte</button>
+
+        <!-- Botones para vista detallada/resumen -->
+        <div id="view-controls" style="display: none; margin-top: 15px;">
+            <button id="btn-detallado" onclick="mostrarVistaDetallada()" class="view-button active">Vista
+                Detallada</button>
+            <button id="btn-resumen" onclick="mostrarVistaResumen()" class="view-button">Vista Resumen</button>
+        </div>
     </div>
 
     <div id="printableReportContent">

@@ -552,7 +552,7 @@ function enviarReportePDF(
 
 /**
  * Genera un PDF a partir de contenido HTML y lo devuelve como una cadena Base64.
- * Esto es útil para descargar el PDF directamente desde el cliente.
+ * VERSIÓN OPTIMIZADA PARA EVITAR ERROR 413 (Request too large)
  * @param {string} htmlContent El contenido HTML del reporte (solo el body).
  * @param {string} fileName El nombre deseado para el archivo PDF.
  * @param {string} styleFileName El nombre del archivo de estilo HTML (.html) a incrustar.
@@ -566,431 +566,146 @@ function generarPdfParaDescarga(
   pageTitle = "Reporte"
 ) {
   try {
-    // Verificar parámetros
-    if (!htmlContent) {
+    Logger.log("🔧 generarPdfParaDescarga - Iniciando validaciones");
+    Logger.log(
+      `📝 HTML Content recibido: ${
+        htmlContent ? "SÍ (length: " + htmlContent.length + ")" : "NO/VACÍO"
+      }`
+    );
+    Logger.log(`📁 Filename: ${fileName}`);
+    Logger.log(`🎨 Style filename: ${styleFileName}`);
+    Logger.log(`📋 Page title: ${pageTitle}`);
+
+    // Verificar parámetros ANTES de procesar
+    if (
+      !htmlContent ||
+      typeof htmlContent !== "string" ||
+      htmlContent.trim().length === 0
+    ) {
+      Logger.log(
+        "❌ ERROR CRÍTICO: htmlContent está vacío, nulo o no es string"
+      );
+      Logger.log(`   Tipo recibido: ${typeof htmlContent}`);
+      Logger.log(`   Valor: ${htmlContent}`);
       throw new Error("El contenido HTML no puede estar vacío");
     }
+
+    // Log del contenido para debugging (primeros 200 caracteres)
+    Logger.log(
+      `📄 Muestra del contenido HTML: ${htmlContent.substring(0, 200)}...`
+    );
 
     if (!fileName) {
       fileName = "Reporte.pdf";
     }
 
-    if (!styleFileName) {
-      styleFileName = "stylesReportePagoProcedimientos"; // Estilo por defecto
-    }
+    // OPTIMIZACIÓN 1: Reducir el tamaño del contenido HTML
+    const htmlContentOptimizado = optimizarHtmlParaPdf(htmlContent);
+    Logger.log(
+      `📏 HTML optimizado: ${htmlContentOptimizado.length} caracteres`
+    );
 
-    // Obtener el contenido del archivo de estilo
-    let styleContent = "";
-    try {
-      styleContent =
-        HtmlService.createHtmlOutputFromFile(styleFileName).getContent();
-    } catch (styleError) {
-      Logger.log(
-        "Advertencia: No se pudo cargar el archivo de estilo: " +
-          styleError.message
-      );
-      // Continuar sin estilos si no se puede cargar el archivo
-    }
+    // OPTIMIZACIÓN 2: Usar estilos CSS mínimos y compactos para PDF
+    const estilosMinimos = `
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+          font-family: Arial, sans-serif; 
+          font-size: 10px; 
+          line-height: 1.3; 
+          color: #333; 
+          background: white; 
+          padding: 15px; 
+          max-width: 100%; 
+        }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin: 8px 0; 
+          font-size: 9px; 
+        }
+        th, td { 
+          border: 1px solid #ddd; 
+          padding: 4px 3px; 
+          text-align: left; 
+          vertical-align: top; 
+          word-wrap: break-word; 
+        }
+        th { 
+          background-color: #f5f5f5; 
+          font-weight: bold; 
+          font-size: 8px; 
+          text-align: center; 
+        }
+        h1, h2, h3 { 
+          color: #273F4F; 
+          margin: 10px 0 5px 0; 
+          page-break-after: avoid; 
+        }
+        h2 { 
+          font-size: 14px; 
+          border-bottom: 2px solid #FE7743; 
+          padding-bottom: 3px; 
+          text-align: center; 
+        }
+        h3 { 
+          font-size: 12px; 
+          color: #FE7743; 
+        }
+        .tabla-detalle { font-size: 8px; }
+        .tabla-detalle th { padding: 3px 2px; font-size: 7px; }
+        .tabla-detalle td { padding: 3px 2px; }
+        .resumen-totales { 
+          background-color: #f8f9fa; 
+          padding: 10px; 
+          border-radius: 5px; 
+          border: 1px solid #e0e0e0; 
+          margin: 10px 0; 
+        }
+        .currency { 
+          text-align: right; 
+          font-weight: bold; 
+          color: #2e7d32; 
+        }
+        .no-records { 
+          text-align: center; 
+          padding: 20px; 
+          color: #666; 
+        }
+        @media print {
+          body { font-size: 9px; padding: 10px; }
+          table { font-size: 8px; }
+          th, td { padding: 2px 1px; font-size: 7px; }
+        }
+      </style>
+    `;
 
-    // Construir el HTML completo con estilos optimizados para PDF
+    // Construir el HTML completo con estilos optimizados
     const fullHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${pageTitle}</title>
-        <style>
-          /* ===== ESTILOS BASE PARA PDF ===== */
-          * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-          }
-          
-          body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 12px;
-            line-height: 1.4;
-            color: #333;
-            background: white;
-            padding: 20px;
-            max-width: 100%;
-            overflow-x: hidden;
-          }
-          
-          /* ===== RESPONSIVE TABLES ===== */
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
-            font-size: 11px;
-            word-wrap: break-word;
-            table-layout: auto;
-          }
-          
-          th, td {
-            border: 1px solid #ddd;
-            padding: 6px 4px;
-            text-align: left;
-            vertical-align: top;
-            word-wrap: break-word;
-            max-width: 120px;
-            overflow-wrap: break-word;
-          }
-          
-          th {
-            background-color: #f5f5f5;
-            font-weight: bold;
-            font-size: 10px;
-            text-align: center;
-          }
-          
-          .text-left { text-align: left; }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          
-          /* ===== FORZAR LAYOUT HORIZONTAL PARA PDF ===== */
-          html body .pdf-container .registro-item .registro-header {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: nowrap;
-            gap: 15px;
-            width: 100%;
-          }
-          
-          /* ===== HEADERS Y TÍTULOS ===== */
-          h1, h2, h3 {
-            color: #273F4F;
-            margin: 15px 0 10px 0;
-            page-break-after: avoid;
-          }
-          
-          h2 {
-            font-size: 16px;
-            border-bottom: 2px solid #FE7743;
-            padding-bottom: 5px;
-            text-align: center;
-          }
-          
-          h3 {
-            font-size: 14px;
-            color: #FE7743;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 3px;
-          }
-          
-          h4 {
-            font-size: 12px;
-            color: #273F4F;
-            margin: 10px 0 5px 0;
-          }
-          
-          /* ===== REPORTE DETALLADO ULTRASONIDO ===== */
-          .reporte-ultrasonido-section {
-            width: 100%;
-            max-width: 100%;
-          }
-          
-          .reporte-info {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            border-left: 4px solid #FE7743;
-            font-size: 11px;
-          }
-          
-          .reporte-info p {
-            margin: 3px 0;
-          }
-          
-          .registro-item {
-            border: 1px solid #e0e0e0;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            overflow: hidden;
-            page-break-inside: avoid;
-          }
-          
-          /* ===== ENCABEZADO DE REGISTROS - LAYOUT HORIZONTAL ===== */
-          div.registro-item div.registro-header {
-            background-color: #f8f9fa;
-            padding: 6px 10px;
-            border-bottom: 1px solid #e0e0e0;
-            font-size: 11px;
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: nowrap;
-            gap: 15px;
-            min-height: 30px;
-            width: 100%;
-            box-sizing: border-box;
-          }
-          
-          .pdf-container .registro-header {
-            display: flex;
-            flex-direction: row;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: nowrap;
-            gap: 15px;
-          }
-          
-          div.registro-header .registro-numero {
-            background-color: #FE7743;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 10px;
-            font-weight: bold;
-            font-size: 10px;
-            white-space: nowrap;
-            flex-shrink: 0;
-            display: inline-block;
-          }
-          
-          div.registro-header .registro-fila {
-            background-color: #273F4F;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 10px;
-            white-space: nowrap;
-            flex-shrink: 0;
-            display: inline-block;
-          }
-          
-          div.registro-header .registro-fecha {
-            color: #273F4F;
-            font-weight: bold;
-            font-size: 11px;
-            white-space: nowrap;
-            flex-shrink: 0;
-            display: inline-block;
-          }
-          
-          /* Contenedor del header optimizado para horizontal */
-          .registro-header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            gap: 15px;
-          }
-          
-          /* Forzar layout horizontal específicamente para PDF */
-          body .registro-item .registro-header {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: nowrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 15px;
-          }
-          
-          /* Evitar que los elementos del header se apilen verticalmente */
-          .registro-header > * {
-            display: inline-flex;
-            align-items: center;
-          }
-          
-          .ultrasonidos-lista {
-            padding: 10px;
-          }
-          
-          .tabla-ultrasonidos-detalle {
-            width: 100%;
-            font-size: 10px;
-          }
-          
-          .tabla-ultrasonidos-detalle th {
-            background-color: #f8f9fa;
-            font-size: 9px;
-            padding: 4px 3px;
-          }
-          
-          .tabla-ultrasonidos-detalle td {
-            padding: 4px 3px;
-            font-size: 10px;
-          }
-          
-          .total-registro {
-            background-color: #e9ecef;
-            font-weight: bold;
-          }
-          
-          .total-registro td {
-            border-top: 2px solid #273F4F;
-            padding: 6px 4px;
-          }
-          
-          .resumen-final {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            border: 2px solid #FE7743;
-            page-break-inside: avoid;
-          }
-          
-          .tabla-resumen-final th {
-            background-color: #273F4F;
-            color: white;
-            padding: 8px 6px;
-            font-size: 10px;
-          }
-          
-          .tabla-resumen-final td {
-            padding: 8px 6px;
-            font-size: 11px;
-          }
-          
-          .total-final {
-            background-color: #FE7743;
-            color: white;
-            font-weight: bold;
-          }
-          
-          /* ===== REPORTE AGREGADO (FALLBACK) ===== */
-          .report-header {
-            text-align: center;
-            margin-bottom: 20px;
-            page-break-after: avoid;
-          }
-          
-          .report-info {
-            margin: 10px 0;
-            font-size: 11px;
-          }
-          
-          .report-table {
-            width: 100%;
-            font-size: 10px;
-          }
-          
-          .report-table th {
-            background-color: #f2f2f2;
-            padding: 6px 4px;
-            font-size: 9px;
-          }
-          
-          .report-table td {
-            padding: 5px 4px;
-          }
-          
-          .total-row {
-            background-color: #f8f8f8;
-            font-weight: bold;
-          }
-          
-          .no-data {
-            text-align: center;
-            font-style: italic;
-            color: #666;
-            padding: 15px;
-          }
-          
-          /* ===== UTILIDADES ===== */
-          .page-break {
-            page-break-before: always;
-          }
-          
-          .no-page-break {
-            page-break-inside: avoid;
-          }
-          
-          /* ===== RESPONSIVE PARA PDF ===== */
-          @media print {
-            body {
-              font-size: 11px;
-              padding: 15px;
-            }
-            
-            table {
-              font-size: 10px;
-            }
-            
-            th, td {
-              padding: 3px 2px;
-              font-size: 9px;
-            }
-            
-            .registro-header {
-              display: flex;
-              flex-direction: row;
-              justify-content: space-between;
-              gap: 10px;
-              text-align: left;
-              padding: 4px 8px;
-              font-size: 10px;
-              flex-wrap: nowrap;
-              align-items: center;
-            }
-            
-            .registro-header > span {
-              display: inline-block;
-              white-space: nowrap;
-            }
-            
-            .reporte-info {
-              padding: 8px;
-            }
-          }
-          
-          /* ===== ADAPTACIÓN POR TAMAÑO DE CONTENIDO ===== */
-          @media (max-width: 600px) {
-            body {
-              padding: 10px;
-            }
-            
-            table {
-              font-size: 9px;
-            }
-            
-            th, td {
-              padding: 2px 1px;
-              font-size: 8px;
-            }
-            
-            h2 {
-              font-size: 14px;
-            }
-            
-            h3 {
-              font-size: 12px;
-            }
-            
-            /* Mantener formato horizontal en pantallas pequeñas */
-            .registro-header {
-              flex-direction: row;
-              justify-content: space-between;
-              gap: 8px;
-              padding: 3px 6px;
-              font-size: 9px;
-            }
-            
-            .registro-numero, .registro-fila, .registro-fecha {
-              font-size: 8px;
-              padding: 2px 4px;
-            }
-          }
-          
-          ${styleContent}
-        </style>
+        ${estilosMinimos}
       </head>
       <body>
-        <div class="pdf-container">
-          ${htmlContent}
-        </div>
+        ${htmlContentOptimizado}
       </body>
       </html>
     `;
 
-    Logger.log("DEBUG (Server): Generando PDF para: " + fileName);
+    Logger.log(`🔧 DEBUG: Generando PDF para: ${fileName}`);
+    Logger.log(`📏 DEBUG: Tamaño del HTML: ${fullHtml.length} caracteres`);
+
+    // OPTIMIZACIÓN 3: Validar tamaño antes de generar PDF
+    if (fullHtml.length > 50000) {
+      // 50KB límite
+      Logger.log(
+        "⚠️ ADVERTENCIA: HTML muy grande, aplicando compresión adicional"
+      );
+      return generarPdfComprimido(htmlContentOptimizado, fileName, pageTitle);
+    }
 
     // Crear el PDF
     const htmlOutput = HtmlService.createHtmlOutput(fullHtml);
@@ -1001,8 +716,118 @@ function generarPdfParaDescarga(
     // Convertir a Base64
     return Utilities.base64Encode(pdfBlob.getBytes());
   } catch (e) {
-    Logger.log("Error al generar PDF para descarga: " + e.message);
+    Logger.log("❌ Error al generar PDF para descarga: " + e.message);
+
+    // FALLBACK: Intentar con versión ultra-comprimida
+    if (e.message.includes("413") || e.message.includes("large")) {
+      Logger.log("🔄 Intentando generar PDF comprimido como fallback...");
+      return generarPdfComprimido(htmlContent, fileName, pageTitle);
+    }
+
     throw new Error("❌ Error al generar el PDF: " + e.message);
+  }
+}
+
+/**
+ * FUNCIÓN AUXILIAR: Optimiza el contenido HTML para reducir su tamaño
+ */
+function optimizarHtmlParaPdf(htmlContent) {
+  try {
+    // Remover comentarios HTML
+    let htmlOptimizado = htmlContent.replace(/<!--[\s\S]*?-->/g, "");
+
+    // Remover espacios en blanco excesivos
+    htmlOptimizado = htmlOptimizado.replace(/\s+/g, " ");
+
+    // Remover atributos de estilo inline innecesarios
+    htmlOptimizado = htmlOptimizado.replace(
+      /style="[^"]*display:\s*none[^"]*"/g,
+      ""
+    );
+
+    // Compactar atributos class repetidos
+    htmlOptimizado = htmlOptimizado.replace(
+      /class="([^"]*)\s+\1"/g,
+      'class="$1"'
+    );
+
+    // Remover divs vacíos
+    htmlOptimizado = htmlOptimizado.replace(/<div[^>]*>\s*<\/div>/g, "");
+
+    Logger.log(
+      `HTML optimizado: ${htmlContent.length} → ${htmlOptimizado.length} caracteres`
+    );
+
+    return htmlOptimizado;
+  } catch (error) {
+    Logger.log("⚠️ Error optimizando HTML, usando original: " + error.message);
+    return htmlContent;
+  }
+}
+
+/**
+ * FUNCIÓN AUXILIAR: Genera PDF ultra-comprimido como último recurso
+ */
+function generarPdfComprimido(htmlContent, fileName, pageTitle) {
+  try {
+    Logger.log("🔧 Generando PDF ultra-comprimido...");
+
+    // Extraer solo el contenido esencial (tablas y texto principal)
+    let contenidoEsencial = htmlContent;
+
+    // Remover elementos no esenciales
+    contenidoEsencial = contenidoEsencial.replace(
+      /<button[^>]*>.*?<\/button>/gi,
+      ""
+    );
+    contenidoEsencial = contenidoEsencial.replace(
+      /<script[^>]*>.*?<\/script>/gi,
+      ""
+    );
+    contenidoEsencial = contenidoEsencial.replace(
+      /<style[^>]*>.*?<\/style>/gi,
+      ""
+    );
+    contenidoEsencial = contenidoEsencial.replace(/onclick="[^"]*"/gi, "");
+    contenidoEsencial = contenidoEsencial.replace(/class="[^"]*"/gi, "");
+    contenidoEsencial = contenidoEsencial.replace(/id="[^"]*"/gi, "");
+
+    // HTML mínimo
+    const htmlMinimo = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>${pageTitle}</title>
+        <style>
+          body { font-family: Arial; font-size: 9px; margin: 10px; }
+          table { width: 100%; border-collapse: collapse; margin: 5px 0; font-size: 8px; }
+          th, td { border: 1px solid #ddd; padding: 2px; }
+          th { background: #f0f0f0; font-weight: bold; text-align: center; }
+          h2 { font-size: 12px; color: #333; text-align: center; margin: 8px 0; }
+          h3 { font-size: 10px; margin: 5px 0; }
+          .currency { text-align: right; font-weight: bold; }
+        </style>
+      </head>
+      <body>
+        ${contenidoEsencial}
+      </body>
+      </html>
+    `;
+
+    Logger.log(`PDF comprimido: ${htmlMinimo.length} caracteres`);
+
+    const htmlOutput = HtmlService.createHtmlOutput(htmlMinimo);
+    const pdfBlob = htmlOutput.getAs(MimeType.PDF).setName(fileName);
+
+    Logger.log("✅ PDF ultra-comprimido generado exitosamente");
+
+    return Utilities.base64Encode(pdfBlob.getBytes());
+  } catch (error) {
+    Logger.log("❌ Error incluso con PDF comprimido: " + error.message);
+    throw new Error(
+      "❌ No se pudo generar el PDF. El reporte es demasiado grande. Intente con un período más pequeño."
+    );
   }
 }
 
@@ -2907,9 +2732,9 @@ function mostrarFormularioHorasExtras() {
  * @param {Object} data - Datos del registro de horas extras.
  * @returns {boolean} - Verdadero si se guardó correctamente.
  */
-function guardarHorasExtrasArriba(data) {
+function guardarRegistroHorasExtras(data) {
   Logger.log(
-    "guardarHorasExtrasArriba llamado con datos: " + JSON.stringify(data)
+    "guardarRegistroHorasExtras llamado con datos: " + JSON.stringify(data)
   );
 
   if (!data || typeof data !== "object") {
@@ -2921,7 +2746,7 @@ function guardarHorasExtrasArriba(data) {
     );
   }
 
-  // Validar datos
+  // Validar datos obligatorios
   if (!data.fecha || !data.trabajador || !data.cantidad_horas) {
     Logger.log("ERROR: Datos incompletos para el registro de horas extras.");
     throw new Error("❌ Datos incompletos. Todos los campos son obligatorios.");
@@ -2934,11 +2759,12 @@ function guardarHorasExtrasArriba(data) {
   }
 
   // Obtener la hoja de cálculo
-  const hoja =
-    SpreadsheetApp.getActiveSpreadsheet().getSheetByName("HorasExtras");
+  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+    "RegistroHorasExtras"
+  );
   if (!hoja) {
-    Logger.log("ERROR: La hoja 'Horas Extras' no existe.");
-    throw new Error("❌ La hoja 'Horas Extras' no existe.");
+    Logger.log("ERROR: La hoja 'RegistroHorasExtras' no existe.");
+    throw new Error("❌ La hoja 'RegistroHorasExtras' no existe.");
   }
 
   try {
@@ -2946,29 +2772,24 @@ function guardarHorasExtrasArriba(data) {
     let [year, month, day] = data.fecha.split("-").map(Number);
     let fechaRegistro = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
-    // Preparar la fila para añadir
-    const fila = [fechaRegistro, data.trabajador, data.cantidad_horas];
+    // Preparar la fila para añadir - SOLO los campos básicos necesarios
+    const fila = [
+      fechaRegistro,
+      data.trabajador,
+      data.cantidad_horas,
+      data.comentarios || "",
+    ];
 
-    // Insertar una nueva fila en la posición 2 (debajo del encabezado)
-    hoja.insertRowAfter(1);
+    // Agregar al final de los datos (orden cronológico natural)
+    const ultimaFila = hoja.getLastRow();
+    hoja.getRange(ultimaFila + 1, 1, 1, fila.length).setValues([fila]);
 
-    // Copiar formato de la fila 3 (antigua fila 2) a la nueva fila 2
-    hoja
-      .getRange(3, 1, 1, hoja.getLastColumn())
-      .copyTo(hoja.getRange(2, 1, 1, hoja.getLastColumn()), {
-        formatOnly: true,
-      });
-
-    // Añadir los datos en la nueva fila 2
-    hoja.getRange(2, 1, 1, fila.length).setValues([fila]);
-
-    // Formatear la celda de fecha
-    hoja.getRange(2, 1).setNumberFormat("dd/MM/yyyy");
-
-    // Formatear la celda de cantidad de horas
-    hoja.getRange(2, 3).setNumberFormat("0.0");
-
-    Logger.log("✅ Registro de horas extras insertado en la fila 2 con éxito.");
+    // Formatear las celdas
+    hoja.getRange(ultimaFila + 1, 1).setNumberFormat("dd/MM/yyyy"); // Fecha
+    hoja.getRange(ultimaFila + 1, 3).setNumberFormat("0.0"); // Horas
+    Logger.log(
+      "✅ Registro de horas extras guardado con éxito en orden cronológico."
+    );
     return true;
   } catch (error) {
     Logger.log("ERROR al guardar horas extras: " + error.message);
@@ -2984,51 +2805,576 @@ function mostrarReportePagoHorasExtras() {
   SpreadsheetApp.getUi().showModalDialog(html, "Reporte de Horas Extras");
 }
 
-function calcularReporteHorasExtras(trabajador, mes, anio, quincena) {
+function calcularPagosHorasExtras(trabajador, mes, anio, quincena) {
+  Logger.log(
+    `🚀 INICIANDO calcularPagosHorasExtras: trabajador=${trabajador}, mes=${mes}, anio=${anio}, quincena=${quincena}`
+  );
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const hojaHorasExtras = ss.getSheetByName("Horas Extras");
+  const hojaHorasExtras = ss.getSheetByName("RegistroHorasExtras");
 
   if (!hojaHorasExtras) {
-    throw new Error("Faltan hojas necesarias: 'HorasExtras'.");
+    throw new Error("Faltan hojas necesarias: 'RegistroHorasExtras'.");
   }
 
   const datosHorasExtras = hojaHorasExtras.getDataRange().getValues();
+  const detalleRegistros = [];
 
-  const resumenHorasExtras = [];
   let totalHoras = 0;
+  let totalSinImpuesto = 0;
+  let totalConImpuesto = 0;
+  let totalImpuesto = 0;
 
   Logger.log("--- Procesando registros de Horas Extras ---");
-  datosHorasExtras.slice(1).forEach((fila) => {
-    const fecha = new Date(fila[0]);
-    const filaTrabajador = fila[1];
-    const cantidadHoras = Number(fila[2]) || 0;
-    const filaMes = fecha.getMonth() + 1;
-    const filaAnio = fecha.getFullYear();
-    const filaDia = fecha.getDate();
 
-    if (filaTrabajador !== trabajador || filaMes !== mes || filaAnio !== anio)
-      return;
-    if (quincena === "1-15" && filaDia > 15) return;
-    if (quincena === "16-31" && filaDia <= 15) return;
+  datosHorasExtras.slice(1).forEach((fila, indiceRealFila) => {
+    const numeroFila = indiceRealFila + 2; // +2 porque slice(1) quita header y los índices empiezan en 0
 
-    resumenHorasExtras.push({
-      fecha: Utilities.formatDate(
-        fecha,
-        ss.getSpreadsheetTimeZone(),
-        "dd/MM/yyyy"
-      ),
-      trabajador: filaTrabajador,
-      cantidad_horas: cantidadHoras,
-    });
-    totalHoras += cantidadHoras;
+    try {
+      const fecha = new Date(fila[0]);
+      const filaTrabajador = fila[1];
+      const cantidadHoras = Number(fila[2]) || 0;
+      const tarifaPorHora = Number(fila[3]) || 0;
+      const aplicaImpuesto =
+        fila[4] === true || fila[4] === "TRUE" || fila[4] === 1;
+      const porcentajeImpuesto = Number(fila[5]) || 0;
+      const comentarios = fila[6] || "";
 
-    Logger.log(
-      `Fecha: ${fecha}, Trabajador: ${filaTrabajador}, Horas: ${cantidadHoras}`
-    );
+      const filaMes = fecha.getMonth() + 1;
+      const filaAnio = fecha.getFullYear();
+      const filaDia = fecha.getDate();
+
+      // Verificar coincidencias exactas
+      if (
+        filaTrabajador !== trabajador ||
+        filaMes !== parseInt(mes) ||
+        filaAnio !== parseInt(anio)
+      ) {
+        return;
+      }
+
+      // Verificar quincena
+      if (quincena === "1-15" && filaDia > 15) return;
+      if (quincena === "16-31" && filaDia <= 15) return;
+
+      // Calcular montos
+      const subtotal = cantidadHoras * tarifaPorHora;
+      const impuesto = aplicaImpuesto
+        ? subtotal * (porcentajeImpuesto / 100)
+        : 0;
+      const totalRegistro = subtotal + impuesto;
+
+      const registro = {
+        fila: numeroFila,
+        fecha: Utilities.formatDate(
+          fecha,
+          ss.getSpreadsheetTimeZone(),
+          "dd/MM/yyyy"
+        ),
+        fechaCompleta: Utilities.formatDate(
+          fecha,
+          ss.getSpreadsheetTimeZone(),
+          "EEEE, dd 'de' MMMM 'de' yyyy"
+        ),
+        trabajador: filaTrabajador,
+        cantidadHoras: cantidadHoras,
+        tarifaPorHora: tarifaPorHora,
+        subtotal: subtotal,
+        aplicaImpuesto: aplicaImpuesto,
+        impuesto: impuesto,
+        total: totalRegistro,
+        comentarios: comentarios,
+      };
+
+      detalleRegistros.push(registro);
+
+      totalHoras += cantidadHoras;
+      totalSinImpuesto += subtotal;
+      totalImpuesto += impuesto;
+      totalConImpuesto += totalRegistro;
+
+      Logger.log(
+        `✅ Registro procesado - Fila ${numeroFila}: ${fecha.toDateString()}, ${cantidadHoras}h, $${subtotal}, Impuesto: ${
+          aplicaImpuesto ? "$" + impuesto.toFixed(2) : "No"
+        }`
+      );
+    } catch (error) {
+      Logger.log(`❌ Error procesando fila ${numeroFila}: ${error.message}`);
+    }
   });
+
   Logger.log("--- Fin del procesamiento de registros de Horas Extras ---");
 
-  return { resumen: resumenHorasExtras, totalHoras: totalHoras };
+  // Calcular totales finales
+  const totales = {
+    totalHoras: totalHoras,
+    subtotal: totalSinImpuesto,
+    impuesto: totalImpuesto,
+    total_con_impuesto: totalConImpuesto,
+  };
+
+  Logger.log(
+    `📊 TOTALES: ${totalHoras} horas, Subtotal: $${totalSinImpuesto.toFixed(
+      2
+    )}, Impuesto: $${totalImpuesto.toFixed(
+      2
+    )}, Total: $${totalConImpuesto.toFixed(2)}`
+  );
+
+  return {
+    detalleRegistros: detalleRegistros,
+    totales: totales,
+    metadatos: {
+      trabajador: trabajador,
+      periodo: `${mes}/${anio}`,
+      quincena: quincena,
+      numeroRegistros: detalleRegistros.length,
+      fechaGeneracion: new Date().toISOString(),
+    },
+  };
+}
+
+/**
+ * Nueva función que calcula pagos de horas extras con parámetros de cálculo personalizados
+ * @param {string} trabajador - Nombre del trabajador
+ * @param {number} mes - Mes para el reporte
+ * @param {number} anio - Año para el reporte
+ * @param {string} quincena - Quincena ("completo", "1-15", "16-31")
+ * @param {Object} parametrosCalculo - Parámetros personalizados de cálculo
+ * @returns {Object} Resultado del cálculo con parámetros personalizados
+ */
+function calcularPagosHorasExtrasConParametros(
+  trabajador,
+  mes,
+  anio,
+  quincena,
+  parametrosCalculo
+) {
+  Logger.log(
+    `🚀 INICIANDO calcularPagosHorasExtrasConParametros: trabajador=${trabajador}, mes=${mes}, anio=${anio}, quincena=${quincena}`
+  );
+  Logger.log(`📊 Parámetros de cálculo: ${JSON.stringify(parametrosCalculo)}`);
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const hojaHorasExtras = ss.getSheetByName("RegistroHorasExtras");
+
+  if (!hojaHorasExtras) {
+    throw new Error("Faltan hojas necesarias: 'RegistroHorasExtras'.");
+  }
+
+  // Extraer parámetros de cálculo con valores por defecto
+  const tarifaPorHoraPersonalizada = parametrosCalculo.tarifaPorHora || 3500;
+  const aplicaImpuestoPersonalizado =
+    parametrosCalculo.aplicaImpuesto !== undefined
+      ? parametrosCalculo.aplicaImpuesto
+      : true;
+  const porcentajeImpuestoPersonalizado =
+    parametrosCalculo.porcentajeImpuesto || 13;
+
+  Logger.log(`💰 Usando tarifa personalizada: ₡${tarifaPorHoraPersonalizada}`);
+  Logger.log(`📋 Aplicar impuesto: ${aplicaImpuestoPersonalizado}`);
+  Logger.log(`📊 Porcentaje de impuesto: ${porcentajeImpuestoPersonalizado}%`);
+
+  const datosHorasExtras = hojaHorasExtras.getDataRange().getValues();
+  const detalleRegistros = [];
+
+  let totalHoras = 0;
+  let totalSinImpuesto = 0;
+  let totalConImpuesto = 0;
+  let totalImpuesto = 0;
+
+  Logger.log(
+    "--- Procesando registros de Horas Extras con parámetros personalizados ---"
+  );
+
+  datosHorasExtras.slice(1).forEach((fila, indiceRealFila) => {
+    const numeroFila = indiceRealFila + 2; // +2 porque slice(1) quita header y los índices empiezan en 0
+
+    try {
+      const fecha = new Date(fila[0]);
+      const filaTrabajador = fila[1];
+      const cantidadHoras = Number(fila[2]) || 0;
+      // SOLO comentarios de la estructura simplificada (columna 4)
+      const comentarios = fila[3] || "";
+
+      const filaMes = fecha.getMonth() + 1;
+      const filaAnio = fecha.getFullYear();
+      const filaDia = fecha.getDate();
+
+      // Verificar coincidencias exactas
+      if (
+        filaTrabajador !== trabajador ||
+        filaMes !== parseInt(mes) ||
+        filaAnio !== parseInt(anio)
+      ) {
+        return;
+      }
+
+      // Verificar quincena
+      if (quincena === "1-15" && filaDia > 15) return;
+      if (quincena === "16-31" && filaDia <= 15) return;
+
+      // Calcular montos usando parámetros personalizados
+      const subtotal = cantidadHoras * tarifaPorHoraPersonalizada;
+      const impuesto = aplicaImpuestoPersonalizado
+        ? subtotal * (porcentajeImpuestoPersonalizado / 100)
+        : 0;
+      const totalRegistro = subtotal + impuesto;
+
+      const registro = {
+        fila: numeroFila,
+        fecha: Utilities.formatDate(
+          fecha,
+          ss.getSpreadsheetTimeZone(),
+          "dd/MM/yyyy"
+        ),
+        fechaCompleta: Utilities.formatDate(
+          fecha,
+          ss.getSpreadsheetTimeZone(),
+          "EEEE, dd 'de' MMMM 'de' yyyy"
+        ),
+        trabajador: filaTrabajador,
+        cantidadHoras: cantidadHoras,
+        tarifaPorHora: tarifaPorHoraPersonalizada, // Usar tarifa personalizada
+        subtotal: subtotal,
+        aplicaImpuesto: aplicaImpuestoPersonalizado, // Usar configuración personalizada
+        porcentajeImpuesto: porcentajeImpuestoPersonalizado, // Usar porcentaje personalizado
+        impuesto: impuesto,
+        total: totalRegistro,
+        comentarios: comentarios,
+      };
+
+      detalleRegistros.push(registro);
+
+      totalHoras += cantidadHoras;
+      totalSinImpuesto += subtotal;
+      totalImpuesto += impuesto;
+      totalConImpuesto += totalRegistro;
+
+      Logger.log(
+        `✅ Registro procesado - Fila ${numeroFila}: ${fecha.toDateString()}, ${cantidadHoras}h, $${subtotal}, Impuesto: ${
+          aplicaImpuestoPersonalizado ? "$" + impuesto.toFixed(2) : "No"
+        }`
+      );
+    } catch (error) {
+      Logger.log(`❌ Error procesando fila ${numeroFila}: ${error.message}`);
+    }
+  });
+
+  Logger.log(
+    "--- Fin del procesamiento de registros de Horas Extras con parámetros personalizados ---"
+  );
+
+  // Calcular totales finales
+  const totales = {
+    totalHoras: totalHoras,
+    subtotal: totalSinImpuesto,
+    impuesto: totalImpuesto,
+    total_con_impuesto: totalConImpuesto,
+  };
+
+  Logger.log(
+    `📊 TOTALES PERSONALIZADOS: ${totalHoras} horas, Subtotal: $${totalSinImpuesto.toFixed(
+      2
+    )}, Impuesto: $${totalImpuesto.toFixed(
+      2
+    )}, Total: $${totalConImpuesto.toFixed(2)}`
+  );
+
+  return {
+    detalleRegistros: detalleRegistros,
+    totales: totales,
+    parametrosUsados: {
+      tarifaPorHora: tarifaPorHoraPersonalizada,
+      aplicaImpuesto: aplicaImpuestoPersonalizado,
+      porcentajeImpuesto: porcentajeImpuestoPersonalizado,
+    },
+    metadatos: {
+      trabajador: trabajador,
+      periodo: `${mes}/${anio}`,
+      quincena: quincena,
+      numeroRegistros: detalleRegistros.length,
+      fechaGeneracion: new Date().toISOString(),
+      calculoPersonalizado: true,
+    },
+  };
+}
+
+// --- Funciones adicionales para Horas Extras ---
+
+/**
+ * Obtiene la lista de trabajadores que han registrado horas extras
+ */
+function obtenerTrabajadoresHorasExtras() {
+  try {
+    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+      "RegistroHorasExtras"
+    );
+    if (!hoja) {
+      throw new Error("❌ La hoja 'RegistroHorasExtras' no existe.");
+    }
+
+    const datos = hoja.getDataRange().getValues();
+    const trabajadores = new Set();
+
+    // Obtener nombres únicos de trabajadores de la columna B (índice 1)
+    for (let i = 1; i < datos.length; i++) {
+      const trabajador = datos[i][1];
+      if (trabajador && typeof trabajador === "string" && trabajador.trim()) {
+        trabajadores.add(trabajador.trim());
+      }
+    }
+
+    const resultado = [...trabajadores].sort();
+    Logger.log(
+      "Trabajadores con horas extras encontrados: " + resultado.join(", ")
+    );
+    return resultado;
+  } catch (error) {
+    Logger.log("ERROR en obtenerTrabajadoresHorasExtras: " + error.message);
+    return [];
+  }
+}
+
+/**
+ * Busca registros de horas extras por criterios específicos
+ */
+function buscarRegistrosHorasExtras(tipoBusqueda, valorBusqueda) {
+  Logger.log(
+    `🔍 Buscando registros de horas extras: ${tipoBusqueda} = ${valorBusqueda}`
+  );
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hoja = ss.getSheetByName("RegistroHorasExtras");
+
+    if (!hoja) {
+      throw new Error("❌ La hoja 'RegistroHorasExtras' no existe.");
+    }
+
+    const datos = hoja.getDataRange().getValues();
+    const resultados = [];
+
+    for (let i = 1; i < datos.length; i++) {
+      const fila = datos[i];
+      const fecha = new Date(fila[0]);
+      const trabajador = fila[1];
+      const cantidadHoras = fila[2];
+      const tarifaPorHora = fila[3] || 0;
+      const aplicaImpuesto = fila[4] || false;
+      const comentarios = fila[5] || "";
+
+      let coincide = false;
+
+      switch (tipoBusqueda) {
+        case "fecha":
+          const fechaBusqueda = new Date(valorBusqueda);
+          coincide = fecha.toDateString() === fechaBusqueda.toDateString();
+          break;
+        case "trabajador":
+          coincide =
+            trabajador &&
+            trabajador.toLowerCase().includes(valorBusqueda.toLowerCase());
+          break;
+        case "mes":
+          const [mes, anio] = valorBusqueda.split("/");
+          coincide =
+            fecha.getMonth() + 1 === parseInt(mes) &&
+            fecha.getFullYear() === parseInt(anio);
+          break;
+        default:
+          Logger.log(`❌ Tipo de búsqueda no válido: ${tipoBusqueda}`);
+          return [];
+      }
+
+      if (coincide) {
+        const subtotal = cantidadHoras * tarifaPorHora;
+        const impuesto = aplicaImpuesto ? subtotal * 0.13 : 0;
+        const total = subtotal + impuesto;
+
+        resultados.push({
+          fila: i + 1,
+          fecha: Utilities.formatDate(
+            fecha,
+            ss.getSpreadsheetTimeZone(),
+            "dd/MM/yyyy"
+          ),
+          trabajador: trabajador,
+          cantidadHoras: cantidadHoras,
+          tarifaPorHora: tarifaPorHora,
+          subtotal: subtotal,
+          aplicaImpuesto: aplicaImpuesto,
+          impuesto: impuesto,
+          total: total,
+          comentarios: comentarios,
+        });
+      }
+    }
+
+    Logger.log(
+      `✅ Búsqueda completada: ${resultados.length} registros encontrados`
+    );
+    return resultados;
+  } catch (error) {
+    Logger.log(`❌ Error en búsqueda: ${error.message}`);
+    throw new Error(`Error al buscar registros: ${error.message}`);
+  }
+}
+
+/**
+ * Actualiza un registro existente de horas extras
+ */
+function actualizarRegistroHorasExtras(fila, datosActualizados) {
+  Logger.log(
+    `🔄 Actualizando registro en fila ${fila}: ${JSON.stringify(
+      datosActualizados
+    )}`
+  );
+
+  try {
+    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+      "RegistroHorasExtras"
+    );
+
+    if (!hoja) {
+      throw new Error("❌ La hoja 'RegistroHorasExtras' no existe.");
+    }
+
+    // Validar que la fila existe
+    if (fila < 2 || fila > hoja.getLastRow()) {
+      throw new Error(`❌ Fila ${fila} no válida.`);
+    }
+
+    // Preparar los datos actualizados
+    const fecha = new Date(datosActualizados.fecha);
+    const trabajador = datosActualizados.trabajador;
+    const cantidadHoras = parseFloat(datosActualizados.cantidad_horas);
+    const tarifaPorHora = parseFloat(datosActualizados.tarifa_por_hora) || 0;
+    const aplicaImpuesto = datosActualizados.aplica_impuesto || false;
+    const comentarios = datosActualizados.comentarios || "";
+
+    // Actualizar la fila
+    hoja.getRange(fila, 1).setValue(fecha);
+    hoja.getRange(fila, 2).setValue(trabajador);
+    hoja.getRange(fila, 3).setValue(cantidadHoras);
+    hoja.getRange(fila, 4).setValue(tarifaPorHora);
+    hoja.getRange(fila, 5).setValue(aplicaImpuesto);
+    hoja.getRange(fila, 6).setValue(comentarios);
+
+    // Aplicar formato
+    hoja.getRange(fila, 1).setNumberFormat("dd/MM/yyyy");
+    hoja.getRange(fila, 3).setNumberFormat("0.0");
+    hoja.getRange(fila, 4).setNumberFormat("$#,##0.00");
+
+    Logger.log(`✅ Registro actualizado exitosamente en fila ${fila}`);
+    return true;
+  } catch (error) {
+    Logger.log(`❌ Error actualizando registro: ${error.message}`);
+    throw new Error(`Error al actualizar registro: ${error.message}`);
+  }
+}
+
+/**
+ * Elimina un registro de horas extras
+ */
+function eliminarRegistroHorasExtras(fila) {
+  Logger.log(`🗑️ Eliminando registro en fila ${fila}`);
+
+  try {
+    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+      "RegistroHorasExtras"
+    );
+
+    if (!hoja) {
+      throw new Error("❌ La hoja 'RegistroHorasExtras' no existe.");
+    }
+
+    // Validar que la fila existe y no es el header
+    if (fila < 2 || fila > hoja.getLastRow()) {
+      throw new Error(`❌ Fila ${fila} no válida.`);
+    }
+
+    // Eliminar la fila
+    hoja.deleteRow(fila);
+
+    Logger.log(`✅ Registro eliminado exitosamente de fila ${fila}`);
+    return true;
+  } catch (error) {
+    Logger.log(`❌ Error eliminando registro: ${error.message}`);
+    throw new Error(`Error al eliminar registro: ${error.message}`);
+  }
+}
+
+/**
+ * Funciones Wrapper para Enviar/Descargar Reportes de Horas Extras
+ */
+function enviarReporteHorasExtras(
+  htmlContent,
+  emailRecipient,
+  reportTitle,
+  subject,
+  fileName
+) {
+  return enviarReportePDF(
+    htmlContent,
+    emailRecipient,
+    reportTitle,
+    subject,
+    fileName
+  );
+}
+
+/**
+ * Función específica para generar PDF de horas extras
+ * @param {string} htmlContent - Contenido HTML del reporte
+ * @param {string} fileName - Nombre del archivo PDF
+ * @param {string} reportTitle - Título del reporte
+ * @returns {string} PDF en formato Base64
+ */
+function descargarReporteHorasExtrasPDF(htmlContent, fileName, reportTitle) {
+  Logger.log("🔧 descargarReporteHorasExtrasPDF iniciado");
+  Logger.log(
+    `📝 HTML Content length: ${htmlContent ? htmlContent.length : "NULL"}`
+  );
+  Logger.log(`📁 Filename: ${fileName}`);
+  Logger.log(`📋 Report Title: ${reportTitle}`);
+
+  try {
+    // Validar que el contenido HTML no esté vacío
+    if (!htmlContent || htmlContent.trim() === "") {
+      Logger.log("❌ Error: htmlContent está vacío");
+      throw new Error(
+        "El contenido HTML para el PDF está vacío. Por favor, genere el reporte primero."
+      );
+    }
+
+    // Validar parámetros
+    if (!fileName) {
+      fileName = "Reporte_Horas_Extras.pdf";
+      Logger.log(`📁 Filename establecido por defecto: ${fileName}`);
+    }
+
+    if (!reportTitle) {
+      reportTitle = "Reporte de Horas Extras";
+      Logger.log(`📋 Report title establecido por defecto: ${reportTitle}`);
+    }
+
+    // Llamar a la función de generación de PDF con parámetros específicos para horas extras
+    const pdfBase64 = generarPdfParaDescarga(
+      htmlContent,
+      fileName,
+      "stylesReportePagoHorasExtras", // Archivo de estilos específico
+      reportTitle
+    );
+
+    Logger.log("✅ PDF de horas extras generado exitosamente");
+    return pdfBase64;
+  } catch (error) {
+    Logger.log(`❌ Error en descargarReporteHorasExtrasPDF: ${error.message}`);
+    throw new Error(
+      `Error al generar el PDF de horas extras: ${error.message}`
+    );
+  }
 }
 
 // --- Funciones para el Módulo de Biopsias ---

@@ -47,8 +47,9 @@
     const fecha = document.getElementById('fecha').value;
     const trabajador = document.getElementById('trabajador').value;
     const cantidadHoras = document.getElementById('cantidad_horas').value;
+    const comentarios = document.getElementById('comentarios').value;
 
-    // Validar datos
+    // Validar datos obligatorios
     if (!fecha) {
       mostrarMensaje("Por favor, seleccione una fecha", "error");
       return false;
@@ -65,7 +66,8 @@
     const datos = {
       fecha: fecha,
       trabajador: trabajador,
-      cantidad_horas: parseFloat(cantidadHoras)
+      cantidad_horas: parseFloat(cantidadHoras),
+      comentarios: comentarios.trim()
     };
 
     mostrarMensaje("Guardando registro...", "info");
@@ -78,8 +80,10 @@
     google.script.run
       .withSuccessHandler(() => {
         mostrarMensaje("✅ Registro de horas extras guardado con éxito", "success");
+        // Limpiar campos
         document.getElementById('trabajador').value = "";
         document.getElementById('cantidad_horas').value = "";
+        document.getElementById('comentarios').value = "";
         // Actualizar la fecha al día actual
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -94,7 +98,7 @@
         submitButton.disabled = false;
         submitButton.value = "Guardar Horas Extras";
       })
-      .guardarHorasExtrasArriba(datos);
+      .guardarRegistroHorasExtras(datos);
 
     return false;
   }

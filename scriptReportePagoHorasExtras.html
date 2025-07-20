@@ -1,4 +1,7 @@
 <script>
+  let datosReporteActual = null;
+  let vistaDetallada = true;
+
   document.addEventListener('DOMContentLoaded', () => {
     // Establecer la fecha actual por defecto
     const today = new Date();
@@ -6,12 +9,16 @@
     document.getElementById('anio').value = today.getFullYear();
     document.getElementById('quincena').value = 'completo';
 
-    // Cargar solo personal de horas extras (Enfermero y Secretaria)
+    // Cargar trabajadores con horas extras registradas
     google.script.run
-      .withSuccessHandler(function (personalList) {
+      .withSuccessHandler(function (trabajadoresList) {
         const select = document.getElementById('trabajador');
+        if (!trabajadoresList || trabajadoresList.length === 0) {
+          select.innerHTML = '<option disabled selected value="">No hay trabajadores con horas extras</option>';
+          return;
+        }
         select.innerHTML = '<option disabled selected value="">Seleccione trabajador...</option>';
-        personalList.forEach(nombre => {
+        trabajadoresList.forEach(nombre => {
           const option = document.createElement('option');
           option.value = nombre;
           option.textContent = nombre;
@@ -20,14 +27,38 @@
         // Añadir el listener para precargar el email
         select.addEventListener('change', cargarEmailPersonal);
       })
-      .obtenerPersonalFiltrado([4, 5]);
+      .withFailureHandler(function (error) {
+        console.error('Error cargando trabajadores:', error);
+        const select = document.getElementById('trabajador');
+        select.innerHTML = '<option disabled selected value="">Error al cargar trabajadores</option>';
+      })
+      .obtenerTrabajadoresHorasExtras();
   });
+
+  function toggleImpuesto() {
+    const aplicaImpuesto = document.getElementById('aplica_impuesto').checked;
+    const porcentajeImpuesto = document.getElementById('porcentaje_impuesto');
+
+    porcentajeImpuesto.disabled = !aplicaImpuesto;
+    if (!aplicaImpuesto) {
+      porcentajeImpuesto.value = "0";
+    } else {
+      porcentajeImpuesto.value = "13";
+    }
+  }
 
   function cargarEmailPersonal() {
     const selectedPersonal = document.getElementById('trabajador').value;
+    if (!selectedPersonal) return;
+
     google.script.run
       .withSuccessHandler(function (email) {
-        document.getElementById('emailRecipient').value = email;
+        if (email) {
+          document.getElementById('emailRecipient').value = email;
+        }
+      })
+      .withFailureHandler(function (error) {
+        console.error('Error cargando email:', error);
       })
       .obtenerEmailParaPersonal(selectedPersonal);
   }
@@ -38,165 +69,351 @@
     const anio = parseInt(document.getElementById('anio').value);
     const quincena = document.getElementById('quincena').value;
 
+    // Obtener parámetros de cálculo personalizados
+    const tarifaPorHora = parseFloat(document.getElementById('tarifa_por_hora').value) || 3500;
+    const aplicaImpuesto = document.getElementById('aplica_impuesto').checked;
+    const porcentajeImpuesto = aplicaImpuesto ? parseFloat(document.getElementById('porcentaje_impuesto').value) : 0;
+
     if (!trabajador) {
       mostrarMensaje("Por favor, seleccione un trabajador.", "error");
       return;
     }
 
-    google.script.run.withSuccessHandler(function (response) {
-      const resumen = response.resumen;
-      const totalHoras = response.totalHoras;
-      const divResultado = document.getElementById('resultado');
-      let html = `
-        <h3>Horas Extras Registradas</h3>
-        <table>
-          <tr>
-            <th>Fecha</th>
-            <th>Trabajador</th>
-            <th>Cantidad de Horas</th>
-          </tr>
+    if (!tarifaPorHora || tarifaPorHora <= 0) {
+      mostrarMensaje("Por favor, ingrese una tarifa por hora válida.", "error");
+      return;
+    }
+
+    mostrarMensaje("Calculando reporte de horas extras...", "info");
+
+    // Pasar los parámetros de cálculo al backend
+    const parametrosCalculo = {
+      tarifaPorHora: tarifaPorHora,
+      aplicaImpuesto: aplicaImpuesto,
+      porcentajeImpuesto: porcentajeImpuesto
+    };
+
+    google.script.run
+      .withSuccessHandler(function (response) {
+        datosReporteActual = response;
+
+        if (!response || !response.detalleRegistros || response.detalleRegistros.length === 0) {
+          mostrarResultadoHorasExtras(null);
+          mostrarMensaje("No se encontraron registros para el período seleccionado.", "info");
+          return;
+        }
+
+        mostrarResultadoHorasExtras(response);
+        mostrarMensaje(`Reporte generado: ${response.detalleRegistros.length} registros encontrados`, "success");
+
+        // Mostrar controles de vista
+        document.getElementById('view-controls').style.display = 'block';
+
+        // Mostrar sección de acciones
+        document.getElementById('action-section').style.display = 'block';
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensaje("Error al generar el reporte: " + error.message, "error");
+        console.error('Error:', error);
+      })
+      .calcularPagosHorasExtrasConParametros(trabajador, mes, anio, quincena, parametrosCalculo);
+  }
+
+  function mostrarResultadoHorasExtras(datos) {
+    const divResultado = document.getElementById('resultado');
+    const reportTitle = document.getElementById('reportTitle');
+
+    if (!datos || !datos.detalleRegistros || datos.detalleRegistros.length === 0) {
+      reportTitle.textContent = "Reporte de Horas Extras - Sin Resultados";
+      divResultado.innerHTML = `
+        <div class="no-records">
+          <h3>📋 No se encontraron registros</h3>
+          <p>No hay registros de horas extras para el período seleccionado.</p>
+        </div>
       `;
+      return;
+    }
 
-      let hasData = false;
-      if (resumen.length > 0) {
-        hasData = true;
-        resumen.forEach(registro => {
-          html += `
+    const trabajador = datos.metadatos.trabajador;
+    const periodo = datos.metadatos.periodo;
+    const quincena = datos.metadatos.quincena;
+
+    let periodoTexto = "";
+    if (quincena === "1-15") {
+      periodoTexto = `Primera quincena de ${getNombreMes(periodo.split('/')[0])} ${periodo.split('/')[1]}`;
+    } else if (quincena === "16-31") {
+      periodoTexto = `Segunda quincena de ${getNombreMes(periodo.split('/')[0])} ${periodo.split('/')[1]}`;
+    } else {
+      periodoTexto = `${getNombreMes(periodo.split('/')[0])} ${periodo.split('/')[1]}`;
+    }
+
+    reportTitle.textContent = `Reporte de Horas Extras - ${trabajador}`;
+
+    if (vistaDetallada) {
+      mostrarReporteDetallado(datos, periodoTexto);
+    } else {
+      mostrarReporteResumen(datos, periodoTexto);
+    }
+  }
+
+  function mostrarReporteDetallado(datos, periodoTexto) {
+    const divResultado = document.getElementById('resultado');
+
+    let html = `
+      <div class="registro-header">
+        <h3>🏥 CENTRO MÉDICO ESPECIALIZADO</h3>
+        <h4>REPORTE DETALLADO DE HORAS EXTRAS</h4>
+        <div class="info-general">
+          <p><strong>Trabajador:</strong> ${datos.metadatos.trabajador}</p>
+          <p><strong>Período:</strong> ${periodoTexto}</p>
+          <p><strong>Tarifa por hora:</strong> ₡${datos.parametrosUsados ? datos.parametrosUsados.tarifaPorHora.toLocaleString('es-ES', { minimumFractionDigits: 2 }) : 'N/A'}</p>
+          <p><strong>Impuesto aplicado:</strong> ${datos.parametrosUsados && datos.parametrosUsados.aplicaImpuesto ? datos.parametrosUsados.porcentajeImpuesto + '%' : 'No aplicado'}</p>
+          <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString('es-ES', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })}</p>
+        </div>
+      </div>
+
+      <div class="detalle-registros">
+        <h4>📋 DETALLE DE REGISTROS</h4>
+        <table class="tabla-detalle">
+          <thead>
             <tr>
-              <td>${registro.fecha}</td>
-              <td style="text-align: left;">${registro.trabajador}</td>
-              <td>${registro.cantidad_horas.toLocaleString('es-CR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
+              <th>Fecha</th>
+              <th>Horas</th>
+              <th>Tarifa/Hora</th>
+              <th>Subtotal</th>
+              <th>Impuesto</th>
+              <th>Total</th>
+              <th>Comentarios</th>
             </tr>
-          `;
-        });
-      }
+          </thead>
+          <tbody>
+    `;
 
-      if (!hasData) {
-        html += `<tr><td colspan="3">No hay registros de horas extras para este período.</td></tr>`;
-      } else {
-        html += `
-              <tr class="grand-total-row">
-                <td style="text-align: left;" colspan="2">TOTAL DE HORAS</td>
-                <td>${totalHoras.toLocaleString('es-CR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</td>
-              </tr>
-          `;
-      }
+    datos.detalleRegistros.forEach(registro => {
+      html += `
+        <tr>
+          <td>${registro.fecha}</td>
+          <td class="number">${registro.cantidadHoras.toFixed(1)}</td>
+          <td class="currency">₡${registro.tarifaPorHora.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          <td class="currency">₡${registro.subtotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          <td class="currency">${registro.aplicaImpuesto ? '₡' + registro.impuesto.toLocaleString('es-ES', { minimumFractionDigits: 2 }) : 'N/A'}</td>
+          <td class="currency">₡${registro.total.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          <td class="comentarios">${registro.comentarios || '-'}</td>
+        </tr>
+      `;
+    });
 
-      html += '</table>';
-      divResultado.innerHTML = html;
+    html += `
+          </tbody>
+        </table>
+      </div>
 
-      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-      const selectedMonthName = monthNames[parseInt(mes) - 1];
-      const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+      <div class="resumen-totales">
+        <h4>💰 RESUMEN DE PAGOS</h4>
+        <table class="tabla-totales">
+          <tr>
+            <td>Total de Horas:</td>
+            <td class="number">${datos.totales.totalHoras.toFixed(1)}</td>
+          </tr>
+          <tr>
+            <td>Subtotal (sin impuesto):</td>
+            <td class="currency">₡${datos.totales.subtotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr>
+            <td>Impuesto (${datos.parametrosUsados && datos.parametrosUsados.aplicaImpuesto ? datos.parametrosUsados.porcentajeImpuesto + '%' : 'No aplicado'}):</td>
+            <td class="currency">₡${datos.totales.impuesto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr class="total-final">
+            <td><strong>TOTAL A PAGAR:</strong></td>
+            <td class="currency"><strong>₡${datos.totales.total_con_impuesto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</strong></td>
+          </tr>
+        </table>
+      </div>
+    `;
 
-      document.getElementById('reportTitle').textContent = `Reporte de Horas Extras - ${trabajador} - ${selectedMonthName} ${anio} (${quincenaText})`;
+    divResultado.innerHTML = html;
+  }
 
-      document.getElementById('action-section').style.display = 'block';
-      document.getElementById('emailMessage').textContent = '';
-    }).calcularReporteHorasExtras(trabajador, mes, anio, quincena);
+  function mostrarReporteResumen(datos, periodoTexto) {
+    const divResultado = document.getElementById('resultado');
+
+    let html = `
+      <div class="registro-header">
+        <h3>🏥 CENTRO MÉDICO ESPECIALIZADO</h3>
+        <h4>RESUMEN DE HORAS EXTRAS</h4>
+        <div class="info-general">
+          <p><strong>Trabajador:</strong> ${datos.metadatos.trabajador}</p>
+          <p><strong>Período:</strong> ${periodoTexto}</p>
+          <p><strong>Total de registros:</strong> ${datos.detalleRegistros.length}</p>
+          <p><strong>Tarifa por hora utilizada:</strong> ₡${datos.parametrosUsados ? datos.parametrosUsados.tarifaPorHora.toLocaleString('es-ES', { minimumFractionDigits: 2 }) : 'N/A'}</p>
+          <p><strong>Impuesto aplicado:</strong> ${datos.parametrosUsados && datos.parametrosUsados.aplicaImpuesto ? datos.parametrosUsados.porcentajeImpuesto + '%' : 'No aplicado'}</p>
+        </div>
+      </div>
+
+      <div class="resumen-totales">
+        <h4>💰 RESUMEN DE PAGOS</h4>
+        <table class="tabla-totales">
+          <tr>
+            <td>Total de Horas Trabajadas:</td>
+            <td class="number">${datos.totales.totalHoras.toFixed(1)}</td>
+          </tr>
+          <tr>
+            <td>Subtotal (sin impuesto):</td>
+            <td class="currency">₡${datos.totales.subtotal.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr>
+            <td>Impuesto aplicado (${datos.parametrosUsados && datos.parametrosUsados.aplicaImpuesto ? datos.parametrosUsados.porcentajeImpuesto + '%' : 'No aplicado'}):</td>
+            <td class="currency">₡${datos.totales.impuesto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</td>
+          </tr>
+          <tr class="total-final">
+            <td><strong>TOTAL A PAGAR:</strong></td>
+            <td class="currency"><strong>₡${datos.totales.total_con_impuesto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</strong></td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    divResultado.innerHTML = html;
+  }
+
+  function mostrarVistaDetallada() {
+    vistaDetallada = true;
+    document.getElementById('btn-detallado').classList.add('active');
+    document.getElementById('btn-resumen').classList.remove('active');
+
+    if (datosReporteActual) {
+      mostrarResultadoHorasExtras(datosReporteActual);
+    }
+  }
+
+  function mostrarVistaResumen() {
+    vistaDetallada = false;
+    document.getElementById('btn-resumen').classList.add('active');
+    document.getElementById('btn-detallado').classList.remove('active');
+
+    if (datosReporteActual) {
+      mostrarResultadoHorasExtras(datosReporteActual);
+    }
+  }
+
+  function getNombreMes(numeroMes) {
+    const meses = [
+      "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    ];
+    return meses[parseInt(numeroMes) - 1] || "Mes inválido";
   }
 
   function enviarReporteHorasExtras() {
-    const emailRecipient = document.getElementById('emailRecipient').value;
-    const trabajador = document.getElementById('trabajador').value;
-    const mes = document.getElementById('mes').value;
-    const anio = parseInt(document.getElementById('anio').value);
-    const quincena = document.getElementById('quincena').value;
-
-    if (!emailRecipient || !emailRecipient.includes('@')) {
-      mostrarEmailMensaje("Por favor, ingrese un email válido.", "error");
+    if (!datosReporteActual) {
+      mostrarMensaje("Debe generar un reporte antes de enviarlo.", "error");
       return;
     }
 
-    const reportContent = document.getElementById('printableReportContent').innerHTML;
-    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const selectedMonthName = monthNames[parseInt(mes) - 1];
-    const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
-    const subject = `Reporte de Horas Extras - ${trabajador} - ${selectedMonthName} ${anio} (${quincenaText})`;
-    const fileName = `Reporte_Horas_Extras_${trabajador.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+    const emailRecipient = document.getElementById('emailRecipient').value;
+    if (!emailRecipient) {
+      mostrarMensaje("Por favor, ingrese el email del destinatario.", "error");
+      return;
+    }
 
-    mostrarEmailMensaje("Enviando reporte...", "info");
+    const htmlContent = document.getElementById('printableReportContent').innerHTML;
+    const reportTitle = `Reporte de Horas Extras - ${datosReporteActual.metadatos.trabajador}`;
+    const subject = `${reportTitle} - ${datosReporteActual.metadatos.periodo}`;
+    const fileName = `ReporteHorasExtras_${datosReporteActual.metadatos.trabajador.replace(/\s+/g, '_')}_${datosReporteActual.metadatos.periodo.replace('/', '_')}.pdf`;
+
+    mostrarMensaje("Enviando reporte por email...", "info");
 
     google.script.run
-      .withSuccessHandler(response => {
-        if (response.success) {
-          mostrarEmailMensaje(response.message, "success");
+      .withSuccessHandler(function (result) {
+        if (result.success) {
+          mostrarMensaje(`✅ Reporte enviado exitosamente a ${emailRecipient}`, "success");
         } else {
-          mostrarEmailMensaje(response.message, "error");
+          mostrarMensaje(`❌ Error al enviar el reporte: ${result.error}`, "error");
         }
       })
-      .withFailureHandler(error => {
+      .withFailureHandler(function (error) {
         mostrarMensaje("❌ Error al enviar el reporte: " + error.message, "error");
       })
-      .enviarReportePDF(reportContent, emailRecipient, subject, fileName);
+      .enviarReporteHorasExtras(htmlContent, emailRecipient, reportTitle, subject, fileName);
   }
 
   function descargarReporteHorasExtrasPDF() {
-    const trabajador = document.getElementById('trabajador').value;
-    const mes = document.getElementById('mes').value;
-    const anio = parseInt(document.getElementById('anio').value);
-    const quincena = document.getElementById('quincena').value;
-
-    if (!trabajador) {
-      mostrarMensaje("Por favor, genere el reporte primero seleccionando un trabajador.", "error");
+    if (!datosReporteActual) {
+      mostrarMensaje("Debe generar un reporte antes de descargarlo.", "error");
       return;
     }
 
-    const reportContent = document.getElementById('printableReportContent').innerHTML;
-    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const selectedMonthName = monthNames[parseInt(mes) - 1];
-    const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
-    const fileName = `Reporte_Horas_Extras_${trabajador.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
+    // Obtener el contenido completo del reporte
+    const printableContent = document.getElementById('printableReportContent');
+    const htmlContent = printableContent ? printableContent.innerHTML : document.getElementById('resultado').innerHTML;
 
-    mostrarEmailMensaje("Generando PDF para descarga...", "info");
+    // Validar que hay contenido
+    if (!htmlContent || htmlContent.trim() === '') {
+      mostrarMensaje("No hay contenido del reporte para generar el PDF. Por favor, genere el reporte primero.", "error");
+      return;
+    }
+
+    const reportTitle = `Reporte de Horas Extras - ${datosReporteActual.metadatos.trabajador}`;
+    const fileName = `ReporteHorasExtras_${datosReporteActual.metadatos.trabajador.replace(/\s+/g, '_')}_${datosReporteActual.metadatos.periodo.replace('/', '_')}.pdf`;
+
+    console.log("Generando PDF con:", {
+      htmlLength: htmlContent.length,
+      reportTitle: reportTitle,
+      fileName: fileName
+    });
+
+    mostrarMensaje("Generando PDF para descarga...", "info");
 
     google.script.run
-      .withSuccessHandler(function (base64Pdf) {
-        if (base64Pdf) {
-          const blob = b64toBlob(base64Pdf, 'application/pdf');
-          const url = URL.createObjectURL(blob);
+      .withSuccessHandler(function (pdfBase64) {
+        if (pdfBase64) {
+          mostrarMensaje("✅ PDF generado exitosamente. Descarga iniciada.", "success");
+
+          // Crear un blob y descargar el archivo
+          const byteCharacters = atob(pdfBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+          // Crear enlace de descarga
+          const url = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
           a.download = fileName;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          mostrarEmailMensaje("✅ Reporte descargado con éxito.", "success");
+          window.URL.revokeObjectURL(url);
         } else {
-          mostrarMensaje("❌ No se pudo generar el PDF para descarga.", "error");
+          mostrarMensaje("❌ Error al generar el PDF", "error");
         }
       })
       .withFailureHandler(function (error) {
-        mostrarMensaje("❌ Error al descargar el PDF: " + error.message, "error");
+        console.error("Error en descarga de PDF:", error);
+        mostrarMensaje("❌ Error al generar el PDF: " + error.message, "error");
       })
-      .generarPdfParaDescarga(reportContent, fileName, 'stylesReportePagoHorasExtras');
+      .descargarReporteHorasExtrasPDF(htmlContent, fileName, reportTitle);
   }
 
-  function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
-    const byteCharacters = atob(b64Data);
-    const byteArrays = [];
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-      const slice = byteCharacters.slice(offset, offset + sliceSize);
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
-    }
-    return new Blob(byteArrays, { type: contentType });
-  }
-
-  function mostrarEmailMensaje(mensaje, tipo) {
+  function mostrarMensaje(mensaje, tipo) {
     let mensajeDiv = document.getElementById('emailMessage');
     if (!mensajeDiv) {
       mensajeDiv = document.createElement('div');
       mensajeDiv.id = 'emailMessage';
       document.getElementById('action-section').appendChild(mensajeDiv);
     }
+
     mensajeDiv.className = '';
     mensajeDiv.textContent = mensaje;
+
     if (tipo === 'success') {
       mensajeDiv.classList.add('alert-success');
     } else if (tipo === 'error') {
@@ -204,40 +421,12 @@
     } else if (tipo === 'info') {
       mensajeDiv.classList.add('alert-info');
     }
+
     if (tipo !== 'error') {
       setTimeout(() => {
         mensajeDiv.textContent = '';
         mensajeDiv.className = '';
       }, 5000);
-    }
-  }
-
-  function mostrarMensaje(mensaje, tipo) {
-    let mensajeDiv = document.getElementById('formMessage') || document.getElementById('emailMessage');
-    if (!mensajeDiv) {
-      mensajeDiv = document.createElement('div');
-      mensajeDiv.id = 'formMessage';
-      const controlsDiv = document.getElementById('reportControls');
-      if (controlsDiv) {
-        controlsDiv.prepend(mensajeDiv);
-      } else {
-        document.body.prepend(mensajeDiv);
-      }
-    }
-    mensajeDiv.className = '';
-    mensajeDiv.textContent = mensaje;
-    if (tipo === 'success') {
-      mensajeDiv.classList.add('alert-success');
-    } else if (tipo === 'error') {
-      mensajeDiv.classList.add('alert-error');
-    } else if (tipo === 'info') {
-      mensajeDiv.classList.add('alert-info');
-    }
-    if (tipo !== 'error') {
-      setTimeout(() => {
-        mensajeDiv.textContent = '';
-        mensajeDiv.className = '';
-      }, 3000);
     }
   }
 </script>
