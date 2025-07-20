@@ -1,181 +1,352 @@
 <style>
+  /* ===================== ESTILOS GLOBALES ===================== */
+  * {
+    box-sizing: border-box;
+  }
+
   body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-    background: #EFEEEA;
-    /* Blanco Roto para el fondo general */
-    color: #273F4F;
-    /* Azul Oscuro para el texto principal */
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     margin: 0;
-    box-sizing: border-box;
+    padding: 20px;
+    color: #333;
+    line-height: 1.6;
   }
 
-  form {
-    background-color: #ffffff;
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #e0e6ed;
+  }
+
+  /* ===================== ENCABEZADO ===================== */
+  .header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-    width: 100%;
-    max-width: 550px;
-    margin: 20px 0;
-    box-sizing: border-box;
-  }
-
-  h2 {
-    color: #273F4F;
     text-align: center;
-    margin-bottom: 25px;
-    font-size: 24px;
-    border-bottom: 2px solid #FE7743;
-    padding-bottom: 10px;
+    position: relative;
   }
 
-  label {
-    font-weight: bold;
-    margin-top: 15px;
-    display: block;
-    color: #273F4F;
-    margin-bottom: 5px;
+  .header h1 {
+    margin: 0;
+    font-size: 2.5em;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
   }
 
-  input[type="date"],
-  input[type="text"],
-  input[type="number"],
-  textarea,
-  select {
-    padding: 10px 12px;
-    margin-bottom: 15px;
-    width: calc(100% - 24px);
-    box-sizing: border-box;
-    border: 1px solid #273F4F;
-    border-radius: 5px;
-    font-size: 16px;
-    color: #273F4F;
-    background-color: #ffffff;
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  .header .subtitle {
+    margin: 10px 0 0 0;
+    font-size: 1.1em;
+    opacity: 0.9;
+    position: relative;
+    z-index: 1;
   }
 
-  input[type="date"]:focus,
-  input[type="text"]:focus,
-  input[type="number"]:focus,
-  textarea:focus,
-  select:focus {
-    border-color: #FE7743;
-    box-shadow: 0 0 5px rgba(254, 119, 67, 0.5);
-    outline: none;
-  }
-
-  textarea {
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  input[type="submit"] {
-    background-color: #273F4F;
-    color: #ffffff;
-    cursor: pointer;
-    transition: background-color 0.3s ease, transform 0.2s ease;
-    padding: 12px 20px;
-    font-size: 18px;
-    border: none;
-    border-radius: 5px;
-    width: 100%;
-  }
-
-  input[type="submit"]:hover {
-    background-color: #000000;
-    transform: translateY(-2px);
-  }
-
-  .frascos-group {
-    display: flex;
-    flex-wrap: wrap;
-    /* Permite que los elementos se envuelvan en pantallas pequeñas */
-    gap: 15px;
-    /* Espacio entre los elementos */
-    margin-bottom: 15px;
-    align-items: center;
-  }
-
-  .frascos-group label {
-    flex-basis: calc(50% - 7.5px);
-    /* Ocupa casi la mitad del ancho */
-    margin-top: 0;
-    /* Eliminar el margen superior por defecto de la etiqueta */
-    margin-bottom: 5px;
-  }
-
-  .frascos-group input[type="number"] {
-    flex-basis: calc(50% - 7.5px);
-    /* Ocupa casi la mitad del ancho */
-    margin-bottom: 0;
-    /* Eliminar margen inferior si es parte del grupo */
-    width: auto;
-    /* Ancho automático para flexbox */
-  }
-
-  /* Mensajes de feedback */
-  .message-area {
-    margin-top: 15px;
-    padding: 10px;
-    border-radius: 5px;
+  /* ===================== ÁREA DE MENSAJES ===================== */
+  .message-container {
+    margin: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    font-weight: 500;
     text-align: center;
-    font-weight: bold;
+    transition: all 0.3s ease;
+    min-height: 20px;
   }
 
-  .message-area.success {
-    background-color: #d4edda;
+  .message-container.success {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
     color: #155724;
     border: 1px solid #c3e6cb;
   }
 
-  .message-area.error {
-    background-color: #f8d7da;
+  .message-container.error {
+    background: linear-gradient(135deg, #f8d7da, #f5c6cb);
     color: #721c24;
     border: 1px solid #f5c6cb;
   }
 
-  .message-area.info {
-    background-color: #e2e3e5;
-    color: #383d41;
-    border: 1px solid #d6d8db;
+  .message-container.warning {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    color: #856404;
+    border: 1px solid #ffeaa7;
   }
 
-  /* Media Queries para Responsividad */
-  @media (max-width: 480px) {
-    form {
+  .message-container.info {
+    background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+  }
+
+  /* ===================== FORMULARIO ===================== */
+  .form-content {
+    padding: 30px;
+  }
+
+  .form-group {
+    margin-bottom: 25px;
+  }
+
+  /* ===================== FIELDSETS Y LEYENDAS ===================== */
+  fieldset {
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: 25px;
+    margin: 25px 0;
+    background: linear-gradient(135deg, #fafbfc 0%, #f8f9fa 100%);
+    position: relative;
+  }
+
+  legend {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 12px 25px;
+    border-radius: 25px;
+    font-weight: 600;
+    font-size: 1.1em;
+    margin-left: 20px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    position: relative;
+  }
+
+  /* ===================== ELEMENTOS DE ENTRADA ===================== */
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.95em;
+  }
+
+  input[type="text"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="number"],
+  select,
+  textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    background: white;
+    color: #495057;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    background: #fafbff;
+  }
+
+  /* ===================== ELEMENTOS ESPECIALES ===================== */
+  .row {
+    display: flex;
+    gap: 20px;
+    align-items: flex-end;
+  }
+
+  .col {
+    flex: 1;
+  }
+
+  .col-auto {
+    flex: 0 0 auto;
+  }
+
+  /* ===================== CONTADORES Y BADGES ===================== */
+  .counter-badge,
+  .total-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85em;
+    margin-left: 10px;
+    transition: all 0.3s ease;
+  }
+
+  .counter-badge {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    color: white;
+  }
+
+  .total-badge {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+    color: white;
+    font-size: 1em;
+    padding: 8px 16px;
+  }
+
+  /* ===================== MENSAJES DE ERROR ===================== */
+  .field-error {
+    color: #e74c3c;
+    font-size: 0.85em;
+    margin-top: 5px;
+    font-weight: 500;
+    min-height: 20px;
+    display: block;
+  }
+
+  /* ===================== TEXTAREA ESPECIAL ===================== */
+  textarea {
+    resize: vertical;
+    min-height: 100px;
+    font-family: inherit;
+  }
+
+  .textarea-container {
+    position: relative;
+  }
+
+  .char-counter {
+    position: absolute;
+    bottom: 8px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #4caf50;
+    border: 1px solid #e9ecef;
+  }
+
+  /* ===================== BOTONES ===================== */
+  .button-group {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid #e9ecef;
+  }
+
+  .btn {
+    padding: 15px 30px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  }
+
+  .btn-secondary {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    color: #495057;
+    border: 2px solid #dee2e6;
+  }
+
+  .btn-secondary:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transform: translateY(-1px);
+  }
+
+  /* ===================== HELP TEXT ===================== */
+  .help-text {
+    font-size: 0.85em;
+    color: #6c757d;
+    margin-top: 5px;
+    font-style: italic;
+  }
+
+  /* ===================== ESTADOS ESPECIALES ===================== */
+  .required {
+    color: #e74c3c;
+  }
+
+  .optional {
+    color: #6c757d;
+    font-weight: normal;
+  }
+
+  /* ===================== RESPONSIVE DESIGN ===================== */
+  @media (max-width: 768px) {
+    body {
+      padding: 10px;
+    }
+
+    .container {
+      border-radius: 10px;
+    }
+
+    .header {
       padding: 20px;
-      margin: 10px 0;
     }
 
-    h2 {
-      font-size: 20px;
+    .header h1 {
+      font-size: 2em;
     }
 
-    label {
-      font-size: 14px;
+    .form-content {
+      padding: 20px;
     }
 
-    input[type="date"],
-    input[type="text"],
-    input[type="number"],
-    textarea,
-    select,
-    input[type="submit"] {
-      font-size: 14px;
-      padding: 8px;
+    fieldset {
+      padding: 20px 15px;
+      margin: 20px 0;
     }
 
-    .frascos-group label,
-    .frascos-group input[type="number"] {
-      flex-basis: 100%;
-      /* En pantallas muy pequeñas, ocupan todo el ancho */
-      margin-bottom: 10px;
-      /* Añadir un poco más de margen entre ellos */
+    legend {
+      font-size: 1em;
+      padding: 10px 20px;
+    }
+
+    .row {
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .button-group {
+      flex-direction: column;
+    }
+
+    .btn {
+      width: 100%;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .header h1 {
+      font-size: 1.8em;
+    }
+
+    .form-content {
+      padding: 15px;
+    }
+
+    fieldset {
+      padding: 15px 10px;
+    }
+
+    legend {
+      margin-left: 10px;
+      padding: 8px 15px;
     }
   }
 </style>

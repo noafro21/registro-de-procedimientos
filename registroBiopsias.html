@@ -3,6 +3,7 @@
 
 <head>
     <base target="_top" />
+    <title>Registro de Biopsias</title>
     <?!= include('stylesRegistroBiopsias'); ?>
     <?!= include('stylesBotonRegresar'); ?>
 </head>
@@ -13,39 +14,100 @@
         <span class="back-button-icon">←</span>
     </button>
 
-    <form id="registroBiopsiaForm" onsubmit="guardarBiopsia(); return false;">
-        <h2>Registro de Biopsias</h2>
+    <div class="container">
+        <form id="registroBiopsiaForm" onsubmit="guardarBiopsia(); return false;">
+            <h2>📋 Registro de Biopsias</h2>
 
-        <label for="fecha_toma">Fecha de la Toma:</label>
-        <input type="date" id="fecha_toma" required />
+            <!-- Mensaje de estado dinámico -->
+            <div id="formMessage" class="message-container"></div>
 
-        <label for="cedula">Cédula:</label>
-        <input type="text" id="cedula" placeholder="Número de cédula" />
+            <!-- Sección: Información de la Muestra -->
+            <fieldset class="form-section">
+                <legend>🧪 Información de la Muestra</legend>
 
-        <label for="telefono">Teléfono:</label>
-        <input type="text" id="telefono" placeholder="Número de teléfono" />
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fecha_toma">Fecha de Toma <span class="required">*</span>:</label>
+                        <input type="date" id="fecha_toma" required />
+                        <small class="field-help">Fecha en que se tomó la muestra</small>
+                        <div id="fecha_toma_error" class="field-error"></div>
+                    </div>
+                </div>
 
-        <label for="nombre_cliente">Nombre Cliente:</label>
-        <input type="text" id="nombre_cliente" placeholder="Nombre completo del cliente" required />
+                <div class="frascos-group">
+                    <div class="form-group">
+                        <label for="frascos_gastro">Frascos Gastroscopía:</label>
+                        <input type="number" id="frascos_gastro" min="0" max="20" value="0" />
+                    </div>
+                    <div class="form-group">
+                        <label for="frascos_colon">Frascos Colonoscopía:</label>
+                        <input type="number" id="frascos_colon" min="0" max="20" value="0" />
+                    </div>
+                    <div class="total-frascos">
+                        <strong>Total: <span id="total_frascos">0</span> frascos</strong>
+                    </div>
+                </div>
+            </fieldset>
 
-        <div class="frascos-group">
-            <label for="frascos_gastro">Frascos Gastro:</label>
-            <input type="number" id="frascos_gastro" min="0" value="0" />
-            <label for="frascos_colon">Frascos Colon:</label>
-            <input type="number" id="frascos_colon" min="0" value="0" />
-        </div>
+            <!-- Sección: Información del Paciente -->
+            <fieldset class="form-section">
+                <legend>👤 Información del Paciente</legend>
 
-        <label for="medico">Médico:</label>
-        <select id="medico" required>
-            <option disabled selected value="">Cargando médicos...</option>
-        </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cedula">Identificación:</label>
+                        <input type="text" id="cedula" placeholder="Cédula, Pasaporte o DIMEX" maxlength="18" />
+                        <small class="field-help">Acepta cédula (9), DIMEX (11-12) o pasaporte</small>
+                        <div id="cedula_error" class="field-error"></div>
+                    </div>
 
-        <label for="comentario">Comentario:</label>
-        <textarea id="comentario" placeholder="Comentarios adicionales sobre la biopsia"></textarea>
+                    <div class="form-group">
+                        <label for="telefono">Teléfono:</label>
+                        <input type="tel" id="telefono" placeholder="8888-8888" maxlength="12" />
+                        <small class="field-help">Formato: 8888-8888</small>
+                        <div id="telefono_error" class="field-error"></div>
+                    </div>
+                </div>
 
-        <input type="submit" value="Guardar Biopsia" />
-        <div id="formMessage" class="message-area"></div>
-    </form>
+                <div class="form-group">
+                    <label for="nombre_cliente">Nombre Completo del Paciente *:</label>
+                    <input type="text" id="nombre_cliente" placeholder="Nombre completo del paciente" required
+                        autocomplete="name" />
+                    <div id="nombre_error" class="field-error"></div>
+                </div>
+            </fieldset>
+
+            <!-- Sección: Información Médica -->
+            <fieldset class="form-section">
+                <legend>👨‍⚕️ Información Médica</legend>
+
+                <div class="form-group">
+                    <label for="medico">Médico Solicitante *:</label>
+                    <select id="medico" required>
+                        <option disabled selected value="">Cargando médicos...</option>
+                    </select>
+                    <div id="medico_error" class="field-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="comentario">Observaciones y Comentarios:</label>
+                    <textarea id="comentario" placeholder="Observaciones clínicas, instrucciones especiales, etc."
+                        rows="4" maxlength="500"></textarea>
+                    <small class="field-help"><span id="comentario_count">0</span>/500 caracteres</small>
+                </div>
+            </fieldset>
+
+            <!-- Botones de acción -->
+            <div class="form-actions">
+                <button type="button" onclick="limpiarFormulario()" class="btn-secondary">
+                    🗑️ Limpiar Formulario
+                </button>
+                <button type="submit" class="btn-primary">
+                    💾 Guardar Biopsia
+                </button>
+            </div>
+        </form>
+    </div>
 
     <?!= include('scriptRegistroBiopsias'); ?>
     <?!= include('scriptBotonRegresar'); ?>

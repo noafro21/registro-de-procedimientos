@@ -3391,17 +3391,96 @@ function mostrarRegistroBiopsias() {
 }
 
 /**
+ * Función de prueba directa para biopsias - versión que funciona como el test
+ * @param {Object} data - Datos del registro de biopsia.
+ * @returns {boolean} - Verdadero si se guardó correctamente.
+ */
+function testGuardarBiopsia(data) {
+  try {
+    Logger.log("🧪 [TEST] Iniciando testGuardarBiopsia");
+    Logger.log("🔍 [TEST] Data recibida: " + JSON.stringify(data));
+
+    const hoja =
+      SpreadsheetApp.getActiveSpreadsheet().getSheetByName("RegistroBiopsias");
+    if (!hoja) {
+      throw new Error("Hoja RegistroBiopsias no encontrada");
+    }
+
+    // Validaciones básicas
+    if (!data || !data.nombre_cliente || !data.medico || !data.fecha_toma) {
+      throw new Error("Faltan datos obligatorios");
+    }
+
+    // Procesar fecha
+    let fechaProcesada;
+    try {
+      const [year, month, day] = data.fecha_toma.split("-").map(Number);
+      fechaProcesada = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+    } catch (e) {
+      fechaProcesada = data.fecha_toma; // Usar como string si falla el procesamiento
+    }
+
+    // Construir fila
+    const fila = [
+      fechaProcesada,
+      false, // recibida
+      false, // enviada
+      data.cedula || "",
+      data.telefono || "",
+      data.nombre_cliente,
+      Number(data.frascos_gastro) || 0,
+      Number(data.frascos_colon) || 0,
+      data.medico,
+      data.comentario || "",
+    ];
+
+    const ultimaFila = hoja.getLastRow();
+    const nuevaFila = ultimaFila + 1;
+
+    Logger.log("💾 [TEST] Insertando en fila " + nuevaFila);
+    hoja.getRange(nuevaFila, 1, 1, fila.length).setValues([fila]);
+
+    // Aplicar formatos básicos
+    hoja.getRange(nuevaFila, 1).setNumberFormat("yyyy-mm-dd");
+    hoja.getRange(nuevaFila, 2, 1, 2).insertCheckboxes();
+
+    Logger.log("✅ [TEST] Guardado exitoso en fila " + nuevaFila);
+    return true;
+  } catch (error) {
+    Logger.log("❌ [TEST] Error: " + error.message);
+    throw new Error("Error en test: " + error.message);
+  }
+}
+
+/**
  * Guarda un registro de biopsia en la hoja "Biopsias".
  * @param {Object} data - Datos del registro de biopsia.
  * @returns {boolean} - Verdadero si se guardó correctamente.
  */
 function guardarRegistroBiopsia(data) {
   try {
-    Logger.log("Guardando registro de biopsia: " + JSON.stringify(data));
+    Logger.log("🧪 Iniciando función guardarRegistroBiopsia");
+    Logger.log("📊 Tipo de dato recibido: " + typeof data);
+    Logger.log("🔍 Valor de data: " + String(data));
+    Logger.log(
+      "🧪 Guardando registro de biopsia (JSON): " + JSON.stringify(data)
+    );
+
+    if (data === undefined) {
+      throw new Error(
+        "Los datos están undefined. Posible problema en el frontend."
+      );
+    }
+
+    if (data === null) {
+      throw new Error("Los datos están null. Posible problema en el frontend.");
+    }
 
     if (!data || typeof data !== "object") {
       throw new Error(
-        "No se recibieron datos válidos para el registro de biopsia."
+        `No se recibieron datos válidos para el registro de biopsia. Tipo: ${typeof data}, Valor: ${String(
+          data
+        )}`
       );
     }
 
@@ -3411,58 +3490,324 @@ function guardarRegistroBiopsia(data) {
       throw new Error("La hoja 'RegistroBiopsias' no existe.");
     }
 
-    // Validar y obtener la fecha (acepta fecha_toma o fechaToma)
-    const fechaStr = data.fechaToma || data.fecha_toma || data.fecha || "";
-    if (!fechaStr || typeof fechaStr !== "string") {
-      throw new Error(
-        "El campo de fecha es obligatorio y debe tener formato YYYY-MM-DD."
+    Logger.log("📊 Hoja encontrada. Filas actuales: " + hoja.getLastRow());
+
+    // Validar datos obligatorios
+    if (!data.nombre_cliente || data.nombre_cliente.trim() === "") {
+      throw new Error("El nombre del paciente es obligatorio.");
+    }
+
+    if (!data.medico || data.medico === "") {
+      throw new Error("El médico es obligatorio.");
+    }
+
+    // Validar y procesar fecha de toma
+    if (!data.fecha_toma) {
+      throw new Error("La fecha de toma es obligatoria.");
+    }
+    const fechaToma = procesarFecha(data.fecha_toma);
+    Logger.log("📅 Fecha procesada: " + fechaToma);
+
+    // Limpiar cédula de guiones y espacios (puede ser cédula, pasaporte o DIMEX)
+    let cedulaLimpia = "";
+    if (data.cedula && data.cedula.trim() !== "") {
+      cedulaLimpia = data.cedula.replace(/[-\s]/g, "").trim();
+      Logger.log(
+        "🆔 Cédula original: '" +
+          data.cedula +
+          "' -> Limpia: '" +
+          cedulaLimpia +
+          "'"
       );
     }
-    let fechaToma;
+
+    // Preparar la fila para añadir (estructura simplificada de 10 columnas)
+    const fila = [
+      fechaToma, // A - Fecha Toma
+      false, // B - Recibida (checkbox) - por defecto false
+      false, // C - Enviada (checkbox) - por defecto false
+      cedulaLimpia, // D - Cédula (sin guiones)
+      data.telefono || "", // E - Teléfono
+      data.nombre_cliente.trim(), // F - Nombre Cliente
+      Number(data.frascos_gastro) || 0, // G - Frascos Gastro
+      Number(data.frascos_colon) || 0, // H - Frascos Colon
+      data.medico, // I - Médico
+      data.comentario || "", // J - Comentario
+    ];
+
+    Logger.log("🔍 Datos de la fila a insertar: " + JSON.stringify(fila));
+    Logger.log("📏 Longitud de la fila: " + fila.length + " columnas");
+
+    // Obtener la última fila con datos para agregar el nuevo registro al final
+    const ultimaFila = hoja.getLastRow();
+    const nuevaFilaNum = ultimaFila + 1;
+
+    Logger.log("📊 Última fila con datos: " + ultimaFila);
+    Logger.log("➕ Nuevo registro se agregará en la fila: " + nuevaFilaNum);
+
+    // Copiar formato de la fila anterior si existe (para mantener consistencia)
     try {
-      let [year, month, day] = fechaStr.split("-").map(Number);
-      fechaToma = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-    } catch (e) {
-      throw new Error("Formato de fecha inválido: " + e.message);
+      if (ultimaFila > 1) {
+        Logger.log("🎨 Iniciando copia de formato...");
+        hoja
+          .getRange(ultimaFila, 1, 1, Math.min(10, hoja.getLastColumn()))
+          .copyTo(hoja.getRange(nuevaFilaNum, 1, 1, 10), {
+            formatOnly: true,
+          });
+        Logger.log(
+          "🎨 Formato copiado de fila " + ultimaFila + " a fila " + nuevaFilaNum
+        );
+      }
+    } catch (formatError) {
+      Logger.log(
+        "⚠️ Error copiando formato (continuando): " + formatError.message
+      );
     }
+
+    // Insertar los datos en la nueva fila al final
+    Logger.log("💾 Insertando datos en la fila " + nuevaFilaNum + "...");
+    hoja.getRange(nuevaFilaNum, 1, 1, fila.length).setValues([fila]);
+    Logger.log("✅ Datos insertados en la fila " + nuevaFilaNum);
+
+    // Formatear la celda de fecha
+    Logger.log("📅 Aplicando formato de fecha...");
+    hoja.getRange(nuevaFilaNum, 1).setNumberFormat("yyyy-mm-dd");
+    Logger.log("📅 Formato de fecha aplicado");
+
+    // Convertir las celdas de recibida y enviada en checkboxes
+    Logger.log("☑️ Insertando checkboxes...");
+    hoja.getRange(nuevaFilaNum, 2, 1, 2).insertCheckboxes();
+    Logger.log("✅ Checkboxes insertados en columnas B y C");
+
+    // Verificar que los datos se guardaron correctamente
+    Logger.log("🔍 Verificando datos guardados...");
+    const filaGuardada = hoja.getRange(nuevaFilaNum, 1, 1, 10).getValues()[0];
+    Logger.log(
+      "🔍 Verificación - Datos guardados en fila " +
+        nuevaFilaNum +
+        ": " +
+        JSON.stringify(filaGuardada)
+    );
+
+    Logger.log(
+      "✅ Registro de biopsia guardado exitosamente en la fila " +
+        nuevaFilaNum +
+        "."
+    );
+    return true;
+  } catch (error) {
+    Logger.log("❌ ERROR al guardar biopsia: " + error.message);
+    throw new Error("Error al guardar el registro: " + error.message);
+  }
+}
+
+/**
+ * Guarda un registro de biopsia con parámetros individuales (soluciona problemas de serialización).
+ * @param {string} fechaToma - Fecha de toma en formato YYYY-MM-DD.
+ * @param {string} cedula - Cédula, pasaporte o DIMEX del paciente.
+ * @param {string} telefono - Teléfono del paciente.
+ * @param {string} nombreCliente - Nombre completo del paciente.
+ * @param {number} frascosGastro - Cantidad de frascos gastro.
+ * @param {number} frascosColon - Cantidad de frascos colon.
+ * @param {string} medico - Nombre del médico.
+ * @param {string} comentario - Comentarios adicionales.
+ * @returns {boolean} - Verdadero si se guardó correctamente.
+ */
+function guardarRegistroBiopsiaConParametros(
+  fechaToma,
+  cedula,
+  telefono,
+  nombreCliente,
+  frascosGastro,
+  frascosColon,
+  medico,
+  comentario
+) {
+  try {
+    Logger.log(
+      "🧪 [PARAMS] Iniciando función guardarRegistroBiopsiaConParametros"
+    );
+    Logger.log("📊 [PARAMS] Parámetros recibidos:");
+    Logger.log("   fechaToma: " + fechaToma);
+    Logger.log("   cedula: " + cedula);
+    Logger.log("   telefono: " + telefono);
+    Logger.log("   nombreCliente: " + nombreCliente);
+    Logger.log("   frascosGastro: " + frascosGastro);
+    Logger.log("   frascosColon: " + frascosColon);
+    Logger.log("   medico: " + medico);
+    Logger.log("   comentario: " + comentario);
+
+    const hoja =
+      SpreadsheetApp.getActiveSpreadsheet().getSheetByName("RegistroBiopsias");
+    if (!hoja) {
+      throw new Error("La hoja 'RegistroBiopsias' no existe.");
+    }
+
+    // Validar datos obligatorios
+    if (!nombreCliente || nombreCliente.trim() === "") {
+      throw new Error("El nombre del paciente es obligatorio.");
+    }
+
+    if (!medico || medico === "") {
+      throw new Error("El médico es obligatorio.");
+    }
+
+    if (!fechaToma) {
+      throw new Error("La fecha de toma es obligatoria.");
+    }
+
+    const fechaTomaProcessed = procesarFecha(fechaToma);
+    const cedulaLimpia = cedula ? cedula.replace(/[-\s]/g, "").trim() : "";
 
     // Preparar la fila para añadir
     const fila = [
-      fechaToma, // Fecha Toma
-      false, // Recibida (por defecto)
-      false, // Enviada (por defecto)
-      data.cedula || "",
+      fechaTomaProcessed, // A - Fecha Toma
+      false, // B - Recibida (checkbox)
+      false, // C - Enviada (checkbox)
+      cedulaLimpia, // D - Cédula
+      telefono || "", // E - Teléfono
+      nombreCliente.trim(), // F - Nombre Cliente
+      Number(frascosGastro) || 0, // G - Frascos Gastro
+      Number(frascosColon) || 0, // H - Frascos Colon
+      medico, // I - Médico
+      comentario || "", // J - Comentario
+    ];
+
+    const ultimaFila = hoja.getLastRow();
+    const nuevaFilaNum = ultimaFila + 1;
+
+    Logger.log("💾 [PARAMS] Insertando en fila " + nuevaFilaNum);
+
+    // Insertar datos
+    hoja.getRange(nuevaFilaNum, 1, 1, fila.length).setValues([fila]);
+
+    // Aplicar formato
+    hoja.getRange(nuevaFilaNum, 1).setNumberFormat("yyyy-mm-dd");
+    hoja.getRange(nuevaFilaNum, 2, 1, 2).insertCheckboxes();
+
+    Logger.log("✅ [PARAMS] Registro guardado en fila " + nuevaFilaNum);
+    return true;
+  } catch (error) {
+    Logger.log("❌ [PARAMS] ERROR: " + error.message);
+    throw new Error("Error al guardar: " + error.message);
+  }
+}
+
+/**
+ * Versión simplificada para debugging - Guarda un registro sin formato
+ * @param {Object} data - Datos del registro de biopsia.
+ * @returns {boolean} - Verdadero si se guardó correctamente.
+ */
+function guardarRegistroBiopsiaSimple(data) {
+  try {
+    Logger.log("🧪 [SIMPLE] Iniciando función guardarRegistroBiopsiaSimple");
+    Logger.log("🔍 [SIMPLE] Datos recibidos: " + JSON.stringify(data));
+
+    const hoja =
+      SpreadsheetApp.getActiveSpreadsheet().getSheetByName("RegistroBiopsias");
+    if (!hoja) {
+      throw new Error("La hoja 'RegistroBiopsias' no existe.");
+    }
+
+    // Validar datos básicos
+    if (!data.nombre_cliente || !data.medico) {
+      throw new Error("Faltan datos obligatorios.");
+    }
+
+    const fechaToma = procesarFecha(data.fecha_toma);
+    const cedulaLimpia = data.cedula
+      ? data.cedula.replace(/[-\s]/g, "").trim()
+      : "";
+
+    const fila = [
+      fechaToma,
+      false,
+      false,
+      cedulaLimpia,
       data.telefono || "",
-      data.nombre_cliente || "",
+      data.nombre_cliente.trim(),
       Number(data.frascos_gastro) || 0,
       Number(data.frascos_colon) || 0,
-      data.medico || "",
+      data.medico,
       data.comentario || "",
     ];
 
-    // Insertar una nueva fila en la posición 2 (debajo del encabezado)
-    hoja.insertRowAfter(1);
+    const ultimaFila = hoja.getLastRow();
+    const nuevaFilaNum = ultimaFila + 1;
 
-    // Copiar formato de la fila 3 (antigua fila 2) a la nueva fila 2
-    hoja
-      .getRange(3, 1, 1, hoja.getLastColumn())
-      .copyTo(hoja.getRange(2, 1, 1, hoja.getLastColumn()), {
-        formatOnly: true,
-      });
+    Logger.log("💾 [SIMPLE] Insertando datos en fila " + nuevaFilaNum);
+    hoja.getRange(nuevaFilaNum, 1, 1, fila.length).setValues([fila]);
 
-    hoja.getRange(2, 1, 1, fila.length).setValues([fila]);
-
-    // Formatear la celda de fecha
-    hoja.getRange(2, 1).setNumberFormat("yyyy-mm-dd");
-
-    // Convertir las celdas de recibida y enviada en checkboxes
-    hoja.getRange(2, 2, 1, 2).insertCheckboxes();
-
-    Logger.log("✅ Registro de biopsia insertado en la fila 2 con éxito.");
+    Logger.log("✅ [SIMPLE] Registro guardado exitosamente");
     return true;
   } catch (error) {
-    Logger.log("ERROR al guardar biopsia: " + error.message);
-    throw new Error("Error al guardar el registro: " + error.message);
+    Logger.log("❌ [SIMPLE] ERROR: " + error.message);
+    throw new Error("Error simple: " + error.message);
+  }
+}
+
+/**
+ * Función de debugging ultra-simple - Solo inserta texto sin procesar
+ * @param {Object} data - Datos del registro de biopsia.
+ * @returns {boolean} - Verdadero si se guardó correctamente.
+ */
+function guardarRegistroBiopsiaUltraSimple(data) {
+  try {
+    Logger.log("🧪 [ULTRA-SIMPLE] Iniciando función test");
+    Logger.log("🔍 [ULTRA-SIMPLE] Datos: " + JSON.stringify(data));
+
+    const hoja =
+      SpreadsheetApp.getActiveSpreadsheet().getSheetByName("RegistroBiopsias");
+    if (!hoja) {
+      throw new Error("La hoja 'RegistroBiopsias' no existe.");
+    }
+
+    Logger.log("📊 [ULTRA-SIMPLE] Hoja encontrada");
+
+    const ultimaFila = hoja.getLastRow();
+    const nuevaFilaNum = ultimaFila + 1;
+
+    Logger.log("💾 [ULTRA-SIMPLE] Insertando en fila " + nuevaFilaNum);
+
+    // Datos ultra-simples sin procesamiento
+    const fila = [
+      data.fecha_toma, // Como string
+      "NO", // Como texto simple
+      "NO", // Como texto simple
+      data.cedula,
+      data.telefono,
+      data.nombre_cliente,
+      data.frascos_gastro,
+      data.frascos_colon,
+      data.medico,
+      data.comentario,
+    ];
+
+    hoja.getRange(nuevaFilaNum, 1, 1, fila.length).setValues([fila]);
+
+    Logger.log("✅ [ULTRA-SIMPLE] Completado");
+    return true;
+  } catch (error) {
+    Logger.log("❌ [ULTRA-SIMPLE] ERROR: " + error.message);
+    throw new Error("[ULTRA-SIMPLE] Error: " + error.message);
+  }
+}
+
+/**
+ * Procesa una fecha en formato string y la convierte a objeto Date
+ * @param {string} fechaStr - Fecha en formato YYYY-MM-DD
+ * @returns {Date} - Objeto Date
+ */
+function procesarFecha(fechaStr) {
+  if (!fechaStr || typeof fechaStr !== "string") {
+    throw new Error("Formato de fecha inválido");
+  }
+
+  try {
+    const [year, month, day] = fechaStr.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  } catch (e) {
+    throw new Error("Formato de fecha inválido: " + e.message);
   }
 }
 
@@ -3512,7 +3857,7 @@ function buscarBiopsiasServidorV2(searchType, searchValue) {
     const hoja = ss.getSheetByName("RegistroBiopsias");
 
     if (!hoja) {
-      Logger.log("ERROR: La hoja 'Biopsias' no existe");
+      Logger.log("ERROR: La hoja 'RegistroBiopsias' no existe");
       return [];
     }
 
@@ -3569,25 +3914,49 @@ function buscarBiopsiasServidorV2(searchType, searchValue) {
           coincide = true;
         }
       } else if (searchType === "cedula") {
-        // Normaliza: convierte a string, elimina espacios y caracteres no numéricos
-        const normalizarCedula = (str) => String(str || "").replace(/\D/g, "");
-        const cedulaHoja = normalizarCedula(fila[3]);
-        const cedulaBusqueda = normalizarCedula(searchValue);
+        // Normaliza: convierte a string, elimina espacios, guiones y otros caracteres especiales
+        // pero conserva letras y números para soportar pasaportes
+        const normalizarIdentificacion = (str) =>
+          String(str || "")
+            .replace(/[-\s]/g, "")
+            .toUpperCase();
+        const identificacionHoja = normalizarIdentificacion(fila[3]);
+        const identificacionBusqueda = normalizarIdentificacion(searchValue);
         Logger.log(
-          `Comparando cédula: hoja=${cedulaHoja} vs busqueda=${cedulaBusqueda}`
+          `Comparando identificación: hoja=${identificacionHoja} vs busqueda=${identificacionBusqueda}`
         );
         Logger.log(
           `Fila ${
             i + 1
-          }: cedulaHoja=${cedulaHoja}, cedulaBusqueda=${cedulaBusqueda}`
+          }: identificacionHoja=${identificacionHoja}, identificacionBusqueda=${identificacionBusqueda}`
         );
-        if (cedulaHoja === cedulaBusqueda) {
+        if (identificacionHoja === identificacionBusqueda) {
           coincide = true;
         }
       } else if (searchType === "nombre") {
-        const nombreHoja = normalizar(fila[5]);
+        const nombreHoja = normalizar(fila[5]); // Columna F - nombre_cliente
         const nombreBusqueda = normalizar(searchValue);
         if (nombreHoja.includes(nombreBusqueda)) {
+          coincide = true;
+        }
+      } else if (searchType === "estado") {
+        // Determinar estado basado en los checkboxes únicamente
+        let estadoMuestra = "registrada";
+        const recibida = fila[1]; // Checkbox recibida (columna B)
+        const enviada = fila[2]; // Checkbox enviada (columna C)
+
+        if (enviada) {
+          estadoMuestra = "enviada";
+        } else if (recibida) {
+          estadoMuestra = "recibida";
+        }
+
+        Logger.log(
+          `Fila ${
+            i + 1
+          }: estado calculado=${estadoMuestra}, buscado=${searchValue}`
+        );
+        if (estadoMuestra === searchValue) {
           coincide = true;
         }
       }
@@ -3656,7 +4025,7 @@ function actualizarEstadoBiopsia(rowIndex, column, value) {
  */
 function aplicarFormatoCondicionalFilaCompleta(rowIndex) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Biopsias");
+  const sheet = ss.getSheetByName("RegistroBiopsias");
 
   if (!sheet) {
     throw new Error("La hoja 'RegistroBiopsias' no existe.");
@@ -3689,7 +4058,7 @@ function inicializarCheckboxes() {
   const sheet = ss.getSheetByName("RegistroBiopsias");
 
   if (!sheet) {
-    throw new Error("La hoja 'Biopsias' no existe.");
+    throw new Error("La hoja 'RegistroBiopsias' no existe.");
   }
 
   const lastRow = sheet.getLastRow();
@@ -3812,6 +4181,100 @@ function generarPdfBiopsias(htmlContent, reportTitle) {
 //     .create();
 
 // ================== FUNCIONES DE DEBUGGING ==================
+
+// ================== FUNCIONES DE BIOPSIAS (NUEVAS) ==================
+
+/**
+ * Muestra el formulario para registrar biopsias
+ */
+function mostrarRegistroBiopsias() {
+  const html = HtmlService.createTemplateFromFile("registroBiopsias")
+    .evaluate()
+    .setWidth(800)
+    .setHeight(600);
+  SpreadsheetApp.getUi().showModalDialog(html, "Registro de Biopsias");
+}
+
+/**
+ * Función simple y limpia para guardar biopsias
+ * @param {Object} datos - Datos del formulario
+ * @returns {boolean} - true si se guardó correctamente
+ */
+function guardarBiopsia(datos) {
+  try {
+    Logger.log("🧪 NUEVO: Guardando biopsia");
+    Logger.log("📊 NUEVO: Datos recibidos: " + JSON.stringify(datos));
+
+    // Verificar que recibimos datos
+    if (!datos) {
+      throw new Error("No se recibieron datos");
+    }
+
+    // Obtener la hoja
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    Logger.log("📊 NUEVO: Spreadsheet obtenido: " + spreadsheet.getName());
+
+    const hoja = spreadsheet.getSheetByName("RegistroBiopsias");
+    if (!hoja) {
+      Logger.log("❌ NUEVO: Hoja RegistroBiopsias no encontrada");
+      throw new Error("Hoja RegistroBiopsias no encontrada");
+    }
+
+    Logger.log("📊 NUEVO: Hoja encontrada: " + hoja.getName());
+
+    // Validar datos obligatorios
+    if (!datos.fecha_toma || !datos.nombre_cliente || !datos.medico) {
+      const error =
+        "Faltan datos obligatorios: " +
+        (!datos.fecha_toma ? "fecha_toma " : "") +
+        (!datos.nombre_cliente ? "nombre_cliente " : "") +
+        (!datos.medico ? "medico " : "");
+      Logger.log("❌ NUEVO: " + error);
+      throw new Error(error);
+    }
+
+    // Crear la fila de datos
+    const fila = [
+      datos.fecha_toma, // A: fecha_toma
+      false, // B: recibida
+      false, // C: enviada
+      datos.cedula || "", // D: cedula
+      datos.telefono || "", // E: telefono
+      datos.nombre_cliente, // F: nombre_cliente
+      Number(datos.frascos_gastro) || 0, // G: frascos_gastro
+      Number(datos.frascos_colon) || 0, // H: frascos_colon
+      datos.medico, // I: medico
+      datos.comentario || "", // J: comentario
+    ];
+
+    Logger.log("📊 NUEVO: Fila a insertar: " + JSON.stringify(fila));
+
+    // Insertar en la última fila
+    const ultimaFila = hoja.getLastRow();
+    const nuevaFila = ultimaFila + 1;
+
+    Logger.log("📊 NUEVO: Insertando en fila: " + nuevaFila);
+
+    hoja.getRange(nuevaFila, 1, 1, fila.length).setValues([fila]);
+    Logger.log("📊 NUEVO: Datos insertados correctamente");
+
+    // Aplicar formatos
+    hoja.getRange(nuevaFila, 1).setNumberFormat("yyyy-mm-dd");
+    hoja.getRange(nuevaFila, 2, 1, 2).insertCheckboxes();
+    Logger.log("📊 NUEVO: Formatos aplicados");
+
+    Logger.log("✅ NUEVO: Guardado exitoso en fila " + nuevaFila);
+    return {
+      success: true,
+      message: "Biopsia guardada correctamente",
+      fila: nuevaFila,
+    };
+  } catch (error) {
+    Logger.log("❌ NUEVO: Error completo: " + error.toString());
+    Logger.log("❌ NUEVO: Stack: " + error.stack);
+    throw new Error("Error al guardar biopsia: " + error.message);
+  }
+}
 
 /**
  * Función para verificar datos específicos de un personal

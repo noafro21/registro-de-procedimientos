@@ -19,19 +19,31 @@
                     </label>
                     <label>
                         <input type="radio" name="searchType" value="cedula" id="radio_cedula">
-                        Cédula
+                        Identificación
                     </label>
                     <label>
                         <input type="radio" name="searchType" value="nombre" id="radio_nombre">
                         Nombre
                     </label>
+                    <label>
+                        <input type="radio" name="searchType" value="estado" id="radio_estado">
+                        Estado de Muestra
+                    </label>
                 </div>
                 <div class="search-inputs">
                     <input type="date" id="search_fecha" class="search-input">
-                    <input type="text" id="search_cedula" class="search-input" placeholder="Ingrese número de cédula"
+                    <input type="text" id="search_cedula" class="search-input" placeholder="Cédula, pasaporte o DIMEX"
                         disabled>
                     <input type="text" id="search_nombre" class="search-input" placeholder="Ingrese nombre del cliente"
                         disabled>
+                    <select id="search_estado" class="search-input" disabled>
+                        <option value="">Seleccione estado...</option>
+                        <option value="registrada">📝 Registrada</option>
+                        <option value="recibida">📦 Recibida</option>
+                        <option value="procesando">🔬 En Procesamiento</option>
+                        <option value="enviada">📤 Enviada</option>
+                        <option value="completada">✅ Completada</option>
+                    </select>
                     <button id="btnBuscar" type="button">Buscar</button>
                 </div>
             </div>

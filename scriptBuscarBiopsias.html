@@ -40,14 +40,20 @@
     document.getElementById('search_fecha').disabled = type !== 'fecha';
     document.getElementById('search_cedula').disabled = type !== 'cedula';
     document.getElementById('search_nombre').disabled = type !== 'nombre';
+    document.getElementById('search_estado').disabled = type !== 'estado';
   }
 
   function buscarBiopsiasUI() {
     const type = document.querySelector('input[name="searchType"]:checked')?.value;
     let value = '';
     if (type === 'fecha') value = document.getElementById('search_fecha')?.value;
-    if (type === 'cedula') value = document.getElementById('search_cedula')?.value.trim();
+    if (type === 'cedula') {
+      // Normalizar cédula/identificación: remover guiones y espacios, convertir a mayúsculas
+      const rawValue = document.getElementById('search_cedula')?.value.trim();
+      value = rawValue.replace(/[-\s]/g, '').toUpperCase();
+    }
     if (type === 'nombre') value = document.getElementById('search_nombre')?.value.trim().toLowerCase();
+    if (type === 'estado') value = document.getElementById('search_estado')?.value;
 
     if (!value) {
       mostrarMensajeBusqueda("Ingrese un valor de búsqueda", "error");
