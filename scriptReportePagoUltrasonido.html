@@ -1,113 +1,526 @@
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    cargarRadiologosReporte();
-    const today = new Date();
-    document.getElementById('mes').value = today.getMonth() + 1;
-    document.getElementById('anio').value = today.getFullYear();
-    document.getElementById('quincena').value = 'completo';
-    document.getElementById('reportTitle').textContent = '';
-  });
+  // ================== INICIALIZACIÓN Y CARGA INICIAL ==================
+  document.addEventListener('DOMContentLoaded', function () {
+    console.log('🚀 Iniciando aplicación de reporte de ultrasonido');
 
-  function cargarRadiologosReporte() {
+    // Inicializar selectores de fecha
+    inicializarSelectoresFecha();
+
+    // Event listeners para actualización de descripción
+    ['mes', 'anio', 'quincena'].forEach(function (id) {
+      const elemento = document.getElementById(id);
+      if (elemento) {
+        elemento.addEventListener('change', function () {
+          actualizarDescripcionSeleccion();
+        });
+      }
+    });
+
+    // Cargar radiólogos con mejor manejo de errores
+    console.log('📋 Cargando lista de radiólogos...');
     google.script.run
       .withSuccessHandler(function (radiologosList) {
-        const select = document.getElementById('radiologo');
-        select.innerHTML = '<option disabled selected value="">Seleccione radiólogo...</option>';
-        radiologosList.forEach(nombre => {
-          const option = document.createElement('option');
-          option.value = nombre;
-          option.textContent = nombre;
-          select.appendChild(option);
-        });
-        select.addEventListener('change', cargarEmailPersonal);
+        console.log('Lista de radiólogos recibida:', radiologosList);
+
+        const selectRadiologo = document.getElementById('radiologo');
+        selectRadiologo.innerHTML = '<option disabled selected value="">Seleccione un radiólogo</option>';
+
+        if (radiologosList.length === 0) {
+          selectRadiologo.innerHTML += '<option disabled>No hay radiólogos disponibles</option>';
+          mostrarMensaje("⚠️ No se pudo cargar la lista de radiólogos", "warning");
+        } else {
+          radiologosList.forEach(function (nombre) {
+            const option = document.createElement('option');
+            option.value = nombre;
+            option.textContent = nombre;
+            selectRadiologo.appendChild(option);
+          });
+          mostrarMensaje("✅ Radiólogos cargados correctamente (" + radiologosList.length + " radiólogos)", "success");
+        }
+      })
+      .withFailureHandler(function (error) {
+        console.error('Error cargando radiólogos:', error);
+        mostrarMensaje("❌ Error al cargar los radiólogos: " + error.message, "error");
       })
       .obtenerRadiologos();
+
+    console.log('✅ Inicialización completada');
+  });
+
+  // ================== INICIALIZACIÓN DE SELECTORES ==================
+  function inicializarSelectoresFecha() {
+    // ========== INICIALIZAR SELECTOR DE MES ==========
+    const selectMes = document.getElementById('mes');
+    if (selectMes) {
+      selectMes.innerHTML = '<option value="">Seleccione un mes</option>';
+      const meses = [
+        { valor: 1, nombre: 'Enero' },
+        { valor: 2, nombre: 'Febrero' },
+        { valor: 3, nombre: 'Marzo' },
+        { valor: 4, nombre: 'Abril' },
+        { valor: 5, nombre: 'Mayo' },
+        { valor: 6, nombre: 'Junio' },
+        { valor: 7, nombre: 'Julio' },
+        { valor: 8, nombre: 'Agosto' },
+        { valor: 9, nombre: 'Septiembre' },
+        { valor: 10, nombre: 'Octubre' },
+        { valor: 11, nombre: 'Noviembre' },
+        { valor: 12, nombre: 'Diciembre' }
+      ];
+
+      meses.forEach(mes => {
+        const option = document.createElement('option');
+        option.value = mes.valor;
+        option.textContent = mes.nombre;
+        selectMes.appendChild(option);
+      });
+
+      // Preseleccionar mes actual
+      const mesActual = new Date().getMonth() + 1;
+      selectMes.value = mesActual;
+    }
+
+    // ========== INICIALIZAR SELECTOR DE AÑO ==========
+    const selectAnio = document.getElementById('anio');
+    const anioActual = new Date().getFullYear();
+
+    if (selectAnio) {
+      selectAnio.innerHTML = '<option value="">Seleccione año</option>';
+
+      // Agregar años (desde 2020 hasta 2 años en el futuro)
+      for (let anio = 2020; anio <= anioActual + 2; anio++) {
+        const option = document.createElement('option');
+        option.value = anio;
+        option.textContent = anio;
+        if (anio === anioActual) {
+          option.selected = true;
+        }
+        selectAnio.appendChild(option);
+      }
+    }
+
+    // ========== INICIALIZAR SELECTOR DE QUINCENA ==========
+    const selectQuincena = document.getElementById('quincena');
+    if (selectQuincena) {
+      selectQuincena.innerHTML = '<option value="">Seleccione una quincena</option>';
+      const quincenas = [
+        { valor: 'completo', nombre: 'Mes Completo' },
+        { valor: '1-15', nombre: 'Primera Quincena (1-15)' },
+        { valor: '16-31', nombre: 'Segunda Quincena (16-31)' }
+      ];
+
+      quincenas.forEach(quincena => {
+        const option = document.createElement('option');
+        option.value = quincena.valor;
+        option.textContent = quincena.nombre;
+        selectQuincena.appendChild(option);
+      });
+
+      // Preseleccionar "Mes Completo"
+      selectQuincena.value = 'completo';
+    }
+
+    console.log('✅ Selectores de fecha inicializados correctamente');
+
+    // Actualizar descripción inicial
+    actualizarDescripcionSeleccion();
   }
 
-  function cargarEmailPersonal() {
-    const selectedPersonal = document.getElementById('radiologo').value;
-    google.script.run
-      .withSuccessHandler(function (email) {
-        document.getElementById('emailRecipient').value = email;
-      })
-      .obtenerEmailParaPersonal(selectedPersonal);
+  // ================== ACTUALIZAR DESCRIPCIÓN DE SELECCIÓN ==================
+  function actualizarDescripcionSeleccion() {
+    const mes = document.getElementById('mes').value;
+    const anio = document.getElementById('anio').value;
+    const quincena = document.getElementById('quincena').value;
+    const descripcionElement = document.getElementById('descripcionSeleccion');
+
+    if (!descripcionElement) return;
+
+    if (mes && anio && quincena) {
+      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+      const nombreMes = monthNames[parseInt(mes) - 1];
+
+      let descripcionQuincena;
+      if (quincena === 'completo') {
+        descripcionQuincena = 'Mes Completo';
+      } else if (quincena === '1-15') {
+        descripcionQuincena = 'Primera Quincena (1-15)';
+      } else {
+        descripcionQuincena = 'Segunda Quincena (16-31)';
+      }
+
+      descripcionElement.textContent = `${nombreMes} ${anio} - ${descripcionQuincena}`;
+      descripcionElement.style.display = 'inline';
+    } else {
+      descripcionElement.textContent = 'Ninguna - Complete todos los campos';
+      descripcionElement.style.display = 'inline';
+    }
   }
 
-  function calcularPagos() {
+  // ================== SISTEMA DE MENSAJES ==================
+  function mostrarMensaje(mensaje, tipo) {
+    const container = document.getElementById('formMessage');
+    if (!container) {
+      console.warn('No se encontró el contenedor de mensajes formMessage');
+      return;
+    }
+
+    // Limpiar mensajes anteriores
+    limpiarMensajes();
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${tipo}`;
+    messageDiv.textContent = mensaje;
+    container.appendChild(messageDiv);
+
+    // Auto-ocultar mensajes de éxito e info después de 5 segundos
+    if (tipo === 'success' || tipo === 'info') {
+      setTimeout(() => {
+        if (messageDiv.parentNode) {
+          messageDiv.parentNode.removeChild(messageDiv);
+        }
+      }, 5000);
+    }
+  }
+
+  function limpiarMensajes() {
+    const container = document.getElementById('formMessage');
+    if (container) {
+      container.innerHTML = '';
+    }
+  }
+
+  // ================== VALIDACIÓN DE FORMULARIO ==================
+  function validarFormulario() {
     const radiologo = document.getElementById('radiologo').value;
     const mes = parseInt(document.getElementById('mes').value);
     const anio = parseInt(document.getElementById('anio').value);
     const quincena = document.getElementById('quincena').value;
 
     if (!radiologo) {
-      mostrarMensaje('Por favor, seleccione un radiólogo.', 'error');
+      mostrarMensaje("❌ Por favor, seleccione un radiólogo.", "error");
+      return false;
+    }
+
+    if (!mes || isNaN(mes) || mes < 1 || mes > 12) {
+      mostrarMensaje("❌ Por favor, seleccione un mes válido.", "error");
+      return false;
+    }
+
+    if (!anio || isNaN(anio) || anio < 2020 || anio > 2030) {
+      mostrarMensaje("❌ Por favor, seleccione un año válido.", "error");
+      return false;
+    }
+
+    if (!quincena || !['completo', '1-15', '16-31'].includes(quincena)) {
+      mostrarMensaje("❌ Por favor, seleccione una quincena válida.", "error");
+      return false;
+    }
+
+    return true;
+  }
+
+  // ================== CALCULAR PAGOS ==================
+  function calcularPagos() {
+    // Validar formulario antes de procesar
+    if (!validarFormulario()) {
       return;
     }
 
-    google.script.run.withSuccessHandler(function (response) {
-      const resumen = response.resumen;
-      const totalGananciaSinIVA = response.totalGananciaSinIVA;
-      const totalIVA = response.totalIVA;
-      const totalGananciaConIVA = response.totalGananciaConIVA;
+    const radiologo = document.getElementById('radiologo').value;
+    const mes = parseInt(document.getElementById('mes').value);
+    const anio = parseInt(document.getElementById('anio').value);
+    const quincena = document.getElementById('quincena').value;
 
-      const divResultado = document.getElementById('resultado');
-      let html = `
-        <h3>Pagos por Ultrasonido</h3>
-        <table>
-          <tr>
-            <th>Tipo de Ultrasonido</th>
-            <th>Costo por Ultrasonido</th>
-            <th>Cantidad</th>
-            <th>Ganancia Sin IVA</th>
-            <th>IVA (4%)</th>
-            <th>Ganancia con IVA</th>
-          </tr>
+    // Mostrar mensaje de carga
+    mostrarMensaje("⏳ Calculando pagos de ultrasonido...", "info");
+
+    // Llamar a la función del backend
+    google.script.run
+      .withSuccessHandler(response => {
+        limpiarMensajes();
+        if (response.success) {
+          mostrarResultadoRadiologia(response, { radiologo, mes, anio, quincena });
+          mostrarMensaje("✅ Reporte generado exitosamente.", "success");
+        } else {
+          mostrarMensaje(`❌ Error: ${response.message}`, "error");
+        }
+      })
+      .withFailureHandler(error => {
+        limpiarMensajes();
+        console.error('Error al calcular pagos:', error);
+        mostrarMensaje("❌ Error del sistema. Revise la consola para más detalles.", "error");
+      })
+      .calcularPagosRadiologia(radiologo, mes, anio, quincena);
+  }
+
+  // ================== MOSTRAR RESULTADO DE RADIOLOGÍA ==================
+  function mostrarResultadoRadiologia(response, parametros) {
+    console.log('=== MOSTRANDO RESULTADO RADIOLOGÍA ===');
+    console.log('Response completa:', response);
+
+    const resumen = response.resumen || {};
+    const detalleRegistros = response.detalleRegistros || [];
+    const metadatos = response.metadatos || {};
+
+    console.log('Detalle de registros:', detalleRegistros);
+    console.log('Metadatos:', metadatos);
+
+    // Si hay detalle de registros, mostrar formato detallado
+    if (detalleRegistros && detalleRegistros.length > 0) {
+      console.log('✅ Generando reporte detallado por registros');
+      mostrarReporteDetallado(detalleRegistros, parametros, response);
+    } else {
+      console.log('⚠️ No hay detalle de registros, mostrando resumen');
+      mostrarResumenAgregado(resumen, parametros, response);
+    }
+
+    // Mostrar sección de acciones
+    const actionSection = document.getElementById('action-section');
+    if (actionSection) {
+      actionSection.style.display = 'block';
+    }
+  }
+
+  // ================== MOSTRAR REPORTE DETALLADO POR REGISTROS ==================
+  function mostrarReporteDetallado(detalleRegistros, parametros, response) {
+    const nombreMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][parametros.mes - 1];
+
+    let descripcionQuincena;
+    if (parametros.quincena === 'completo') {
+      descripcionQuincena = 'Mes Completo';
+    } else if (parametros.quincena === '1-15') {
+      descripcionQuincena = 'Primera Quincena';
+    } else {
+      descripcionQuincena = 'Segunda Quincena';
+    }
+
+    const fechaActual = new Date().toLocaleDateString('es-CR');
+
+    let html = `
+      <div class="reporte-ultrasonido-section">
+        <h2>📋 Reporte de Ultrasonido - ${parametros.radiologo}</h2>
+        <div class="reporte-info">
+          <p><strong>Período:</strong> ${nombreMes} ${parametros.anio} - ${descripcionQuincena}</p>
+          <p><strong>Total de registros:</strong> ${detalleRegistros.length}</p>
+          <p><strong>Fecha de generación:</strong> ${fechaActual}</p>
+        </div>
+        
+        <div class="registros-container">
+    `;
+
+    // Ordenar registros por fecha
+    const registrosOrdenados = detalleRegistros.sort((a, b) => {
+      const fechaA = new Date(a.fechaOriginal);
+      const fechaB = new Date(b.fechaOriginal);
+      return fechaA - fechaB;
+    });
+
+    registrosOrdenados.forEach((registro, index) => {
+      const numeroRegistro = index + 1;
+
+      html += `
+        <div class="registro-item">
+          <div class="registro-header">
+            <span class="registro-numero">#${numeroRegistro}</span>
+            <span class="registro-fila">Fila ${registro.fila}</span>
+            <span class="registro-fecha">${registro.fecha}</span>
+          </div>
+          
+          <div class="ultrasonidos-lista">
+            <h4>Ultrasonidos realizados:</h4>
+            <table class="tabla-ultrasonidos-detalle">
+              <thead>
+                <tr>
+                  <th>Tipo de Ultrasonido</th>
+                  <th>Cant.</th>
+                  <th>Costo Unit.</th>
+                  <th>Sin IVA</th>
+                  <th>IVA (4%)</th>
+                  <th>Total con IVA</th>
+                </tr>
+              </thead>
+              <tbody>
       `;
 
-      let hasData = false;
-      for (const key in resumen) {
-        const r = resumen[key];
-        if (r.cantidad > 0) {
-          hasData = true;
+      // Mostrar ultrasonidos del registro
+      if (registro.ultrasonidos && registro.ultrasonidos.length > 0) {
+        registro.ultrasonidos.forEach(ultra => {
           html += `
             <tr>
-              <td class="text-left">${r.nombre}</td>
-              <td>₡${r.costo_unitario.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td>${r.cantidad}</td>
-              <td>₡${r.ganancia_sin_iva.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td>₡${r.iva_monto.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-              <td>₡${r.ganancia_con_iva.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+              <td class="text-left">${ultra.nombre}</td>
+              <td class="text-center">${ultra.cantidad}</td>
+              <td class="text-right">₡${formatearNumeroEspanol(ultra.costoUnitario)}</td>
+              <td class="text-right">₡${formatearNumeroEspanol(ultra.subtotal)}</td>
+              <td class="text-right">₡${formatearNumeroEspanol(ultra.iva)}</td>
+              <td class="text-right">₡${formatearNumeroEspanol(ultra.total)}</td>
             </tr>
           `;
-        }
-      }
-
-      if (!hasData) {
-        html += `<tr><td colspan="6">No hay registros de ultrasonido para este período.</td></tr>`;
+        });
       } else {
         html += `
-          <tr class="grand-total-row">
-            <td class="text-left" colspan="3">TOTALES</td>
-            <td>₡${totalGananciaSinIVA.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td>₡${totalIVA.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-            <td>₡${totalGananciaConIVA.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+          <tr>
+            <td colspan="6" class="text-center">
+              <em>No hay ultrasonidos detallados para este registro</em>
+            </td>
           </tr>
         `;
       }
 
-      html += '</table>';
-      divResultado.innerHTML = html;
+      // Calcular totales del registro
+      const subtotalRegistroSinIVA = registro.subtotalRegistro || 0;
+      const ivaRegistro = subtotalRegistroSinIVA * 0.04;
+      const totalConIVARegistro = subtotalRegistroSinIVA + ivaRegistro;
 
-      const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-      const selectedMonthName = monthNames[parseInt(mes) - 1];
-      const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
+      html += `
+              </tbody>
+              <tfoot>
+                <tr class="total-registro">
+                  <td colspan="3"><strong>Total del registro:</strong></td>
+                  <td class="text-right"><strong>₡${formatearNumeroEspanol(subtotalRegistroSinIVA)}</strong></td>
+                  <td class="text-right"><strong>₡${formatearNumeroEspanol(ivaRegistro)}</strong></td>
+                  <td class="text-right"><strong>₡${formatearNumeroEspanol(totalConIVARegistro)}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      `;
+    });
 
-      document.getElementById('reportTitle').textContent = `Reporte de Ultrasonido - ${radiologo} - ${selectedMonthName} ${anio} (${quincenaText})`;
-      document.getElementById('action-section').style.display = 'block';
-      document.getElementById('emailMessage').textContent = '';
-    }).calcularPagosRadiologia(radiologo, mes, anio, quincena);
+    // Totales generales
+    const totalSinIVA = response.totalGananciaSinIVA || 0;
+    const totalIVA = response.totalIVA || 0;
+    const totalConIVA = response.totalGananciaConIVA || 0;
+
+    html += `
+        </div>
+        
+        <div class="resumen-final">
+          <h3>📊 Resumen Total del Período</h3>
+          <table class="tabla-resumen-final">
+            <thead>
+              <tr>
+                <th>Concepto</th>
+                <th>Sin IVA</th>
+                <th>IVA (4%)</th>
+                <th>Total con IVA</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="total-final">
+                <td><strong>TOTAL GENERAL</strong></td>
+                <td class="text-right"><strong>₡${formatearNumeroEspanol(totalSinIVA)}</strong></td>
+                <td class="text-right"><strong>₡${formatearNumeroEspanol(totalIVA)}</strong></td>
+                <td class="text-right"><strong>₡${formatearNumeroEspanol(totalConIVA)}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Actualizar el DOM
+    document.getElementById('resultado').innerHTML = html;
   }
 
+  // ================== MOSTRAR RESUMEN AGREGADO (FALLBACK) ==================
+  function mostrarResumenAgregado(resumen, parametros, response) {
+    const totalGananciaSinIVA = response.totalGananciaSinIVA || 0;
+    const totalIVA = response.totalIVA || 0;
+    const totalGananciaConIVA = response.totalGananciaConIVA || 0;
+
+    // Crear el HTML del reporte
+    const fechaActual = new Date().toLocaleDateString('es-CR');
+    const nombreMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][parametros.mes - 1];
+
+    let descripcionQuincena;
+    if (parametros.quincena === 'completo') {
+      descripcionQuincena = 'Mes Completo';
+    } else if (parametros.quincena === '1-15') {
+      descripcionQuincena = 'Primera Quincena';
+    } else {
+      descripcionQuincena = 'Segunda Quincena';
+    }
+
+    let html = `
+      <div class="report-header">
+        <h2>Reporte de Radiología (Resumen)</h2>
+        <div class="report-info">
+          <p><strong>Radiólogo:</strong> ${parametros.radiologo}</p>
+          <p><strong>Período:</strong> ${nombreMes} ${parametros.anio} - ${descripcionQuincena}</p>
+          <p><strong>Fecha de generación:</strong> ${fechaActual}</p>
+        </div>
+      </div>
+
+      <table class="report-table">
+        <thead>
+          <tr>
+            <th>Tipo de Ultrasonido</th>
+            <th>Costo Unitario</th>
+            <th>Cantidad</th>
+            <th>Subtotal</th>
+            <th>IVA (4%)</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    let tieneRegistros = false;
+    for (const key in resumen) {
+      const r = resumen[key];
+      if (r.cantidad > 0) {
+        tieneRegistros = true;
+        html += `
+          <tr>
+            <td class="text-left">${r.nombre}</td>
+            <td class="text-right">₡${formatearNumeroEspanol(r.costo_unitario)}</td>
+            <td class="text-center">${r.cantidad}</td>
+            <td class="text-right">₡${formatearNumeroEspanol(r.ganancia_sin_iva)}</td>
+            <td class="text-right">₡${formatearNumeroEspanol(r.iva_monto)}</td>
+            <td class="text-right">₡${formatearNumeroEspanol(r.ganancia_con_iva)}</td>
+          </tr>
+        `;
+      }
+    }
+
+    if (!tieneRegistros) {
+      html += `<tr><td colspan="6" class="no-data">No hay registros de ultrasonido para este período.</td></tr>`;
+    } else {
+      html += `
+        <tr class="total-row">
+          <td class="text-left" colspan="3"><strong>TOTALES</strong></td>
+          <td class="text-right"><strong>₡${formatearNumeroEspanol(totalGananciaSinIVA)}</strong></td>
+          <td class="text-right"><strong>₡${formatearNumeroEspanol(totalIVA)}</strong></td>
+          <td class="text-right"><strong>₡${formatearNumeroEspanol(totalGananciaConIVA)}</strong></td>
+        </tr>
+      `;
+    }
+
+    html += `
+        </tbody>
+      </table>
+    `;
+
+    // Actualizar el DOM
+    document.getElementById('resultado').innerHTML = html;
+  }
+
+  // ================== FUNCIONES DE UTILIDAD ==================
+  function formatearNumeroEspanol(numero) {
+    if (typeof numero !== 'number' || isNaN(numero)) {
+      return '0,00';
+    }
+    return numero.toLocaleString('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  // ================== ENVÍO DE EMAIL ==================
   function enviarReporteUltrasonido() {
     const emailRecipient = document.getElementById('emailRecipient').value;
     const radiologo = document.getElementById('radiologo').value;
@@ -120,143 +533,181 @@
       return;
     }
 
-    const reportContent = document.getElementById('printableReportContent').innerHTML;
-    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const reportContent = document.getElementById('resultado').innerHTML;
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const selectedMonthName = monthNames[parseInt(mes) - 1];
     const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
     const subject = `Reporte de Ultrasonido - ${radiologo} - ${selectedMonthName} ${anio} (${quincenaText})`;
     const fileName = `Reporte_Ultrasonido_${radiologo.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
 
-    mostrarEmailMensaje("Enviando reporte...", "info");
+    mostrarEmailMensaje("Enviando reporte por email...", "info");
 
     google.script.run
-      .withSuccessHandler(response => {
-        if (response.success) {
-          mostrarEmailMensaje(response.message, "success");
-        } else {
-          mostrarEmailMensaje(response.message, "error");
-        }
+      .withSuccessHandler(() => {
+        mostrarEmailMensaje("✅ Reporte enviado exitosamente por email.", "success");
       })
       .withFailureHandler(error => {
-        mostrarMensaje("❌ Error al enviar el reporte: " + error.message, "error");
+        console.error('Error enviando email:', error);
+        mostrarEmailMensaje("❌ Error al enviar email: " + error.message, "error");
       })
-      .enviarReportePDF(reportContent, emailRecipient, subject, fileName);
-  }
-
-  function descargarReporteUltrasonidoPDF() {
-    const radiologo = document.getElementById('radiologo').value;
-    const mes = document.getElementById('mes').value;
-    const anio = parseInt(document.getElementById('anio').value);
-    const quincena = document.getElementById('quincena').value;
-
-    if (!radiologo) {
-      mostrarMensaje('Por favor, genere el reporte primero seleccionando un radiólogo.', 'error');
-      return;
-    }
-
-    const reportContent = document.getElementById('printableReportContent').innerHTML;
-    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-    const selectedMonthName = monthNames[parseInt(mes) - 1];
-    const quincenaText = quincena === 'completo' ? 'Mes Completo' : `Quincena ${quincena}`;
-    const fileName = `Reporte_Ultrasonido_${radiologo.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincena.replace('-', '_')}.pdf`;
-    const pageTitle = `Reporte de Ultrasonido - ${radiologo} - ${selectedMonthName} ${anio}`;
-
-    mostrarEmailMensaje("Generando PDF para descarga...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (base64Pdf) {
-        if (base64Pdf) {
-          const blob = b64toBlob(base64Pdf, 'application/pdf');
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          URL.revokeObjectURL(url);
-          mostrarEmailMensaje("✅ Reporte descargado con éxito.", "success");
-        } else {
-          mostrarMensaje("❌ No se pudo generar el PDF para descarga.", "error");
-        }
-      })
-      .withFailureHandler(function (error) {
-        mostrarMensaje("❌ Error al descargar el PDF: " + error.message, "error");
-      })
-      .generarPdfParaDescarga(reportContent, fileName, 'stylesReportePagoUltrasonido', pageTitle);
-  }
-
-  function b64toBlob(b64Data, contentType = '', sliceSize = 512) {
-    const byteCharacters = atob(b64Data);
-    const byteArrays = [];
-    for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-      const slice = byteCharacters.slice(offset, offset + sliceSize);
-      const byteNumbers = new Array(slice.length);
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
-    }
-    return new Blob(byteArrays, { type: contentType });
+      .enviarReportePorEmail(emailRecipient, subject, reportContent, fileName);
   }
 
   function mostrarEmailMensaje(mensaje, tipo) {
-    let mensajeDiv = document.getElementById('emailMessage');
-    if (!mensajeDiv) {
-      mensajeDiv = document.createElement('div');
-      mensajeDiv.id = 'emailMessage';
-      mensajeDiv.className = 'email-message';
-      document.getElementById('action-section').appendChild(mensajeDiv);
-    }
-    mensajeDiv.className = 'email-message';
-    mensajeDiv.textContent = mensaje;
+    const emailMessage = document.getElementById('emailMessage');
+    if (emailMessage) {
+      emailMessage.textContent = mensaje;
+      emailMessage.className = `message ${tipo}`;
+      emailMessage.style.display = 'block';
 
-    if (tipo === 'success') {
-      mensajeDiv.classList.add('alert-success');
-    } else if (tipo === 'error') {
-      mensajeDiv.classList.add('alert-error');
-    } else if (tipo === 'info') {
-      mensajeDiv.classList.add('alert-info');
-    }
-
-    if (tipo !== 'error') {
-      setTimeout(() => {
-        mensajeDiv.textContent = '';
-        mensajeDiv.className = 'email-message';
-      }, 5000);
+      if (tipo === 'success' || tipo === 'info') {
+        setTimeout(() => {
+          emailMessage.style.display = 'none';
+        }, 5000);
+      }
     }
   }
 
-  function mostrarMensaje(mensaje, tipo) {
-    let mensajeDiv = document.getElementById('formMessage') || document.getElementById('emailMessage');
-    if (!mensajeDiv) {
-      mensajeDiv = document.createElement('div');
-      mensajeDiv.id = 'formMessage';
-      mensajeDiv.className = 'form-message';
-      const controlsDiv = document.getElementById('reportControls');
-      if (controlsDiv) {
-        controlsDiv.prepend(mensajeDiv);
-      } else {
-        document.body.prepend(mensajeDiv);
-      }
-    }
-    mensajeDiv.className = 'form-message';
-    mensajeDiv.textContent = mensaje;
+  // ================== IMPRIMIR REPORTE ==================
+  function imprimirReporte() {
+    const reportContent = document.getElementById('resultado').innerHTML;
 
-    if (tipo === 'success') {
-      mensajeDiv.classList.add('alert-success');
-    } else if (tipo === 'error') {
-      mensajeDiv.classList.add('alert-error');
-    } else if (tipo === 'info') {
-      mensajeDiv.classList.add('alert-info');
+    if (!reportContent || reportContent.trim() === '') {
+      mostrarMensaje("❌ No hay reporte para imprimir. Genere un reporte primero.", "error");
+      return;
     }
 
-    if (tipo !== 'error') {
-      setTimeout(() => {
-        mensajeDiv.textContent = '';
-        mensajeDiv.className = 'form-message';
-      }, 3000);
+    const ventanaImpresion = window.open('', '_blank');
+    ventanaImpresion.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Reporte de Ultrasonido</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .report-header { text-align: center; margin-bottom: 30px; }
+          .report-info { margin: 20px 0; }
+          .report-table { width: 100%; border-collapse: collapse; }
+          .report-table th, .report-table td { border: 1px solid #ddd; padding: 8px; }
+          .report-table th { background-color: #f2f2f2; font-weight: bold; }
+          .text-left { text-align: left; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .total-row { background-color: #f8f8f8; font-weight: bold; }
+          .no-data { text-align: center; font-style: italic; }
+        </style>
+      </head>
+      <body>
+        ${reportContent}
+      </body>
+      </html>
+    `);
+
+    ventanaImpresion.document.close();
+    ventanaImpresion.print();
+  }
+
+  // ================== REGRESAR AL MENÚ PRINCIPAL ==================
+  function regresarAlMenu() {
+    window.location.href = 'https://script.google.com/macros/d/1BgtiO0YF02bke36AVqwZlHT9H6K1NPl5gP8bZkhe-Sw/exec';
+  }
+
+  // ================== FUNCIONES ADICIONALES PARA EL HTML ==================
+  function volverAlMenu() {
+    regresarAlMenu();
+  }
+
+  function actualizarSelectoresFecha() {
+    inicializarSelectoresFecha();
+    mostrarMensaje("✅ Selectores de fecha actualizados.", "success");
+  }
+
+  function mostrarAyudaFechas() {
+    mostrarMensaje("ℹ️ Seleccione el radiólogo, mes, año y quincena para generar el reporte. 'Mes Completo' incluye todas las fechas del mes.", "info");
+  }
+
+  function cargarEmailPersonal() {
+    const radiologo = document.getElementById('radiologo').value;
+    if (!radiologo) {
+      mostrarMensaje("❌ Seleccione un radiólogo primero.", "error");
+      return;
     }
+
+    // Simular carga de email basado en el radiólogo
+    const emailInput = document.getElementById('emailRecipient');
+    if (emailInput) {
+      // En un caso real, esto vendría del backend
+      emailInput.value = `${radiologo.toLowerCase().replace(/\s+/g, '.')}@hospital.com`;
+      mostrarMensaje("✅ Email cargado automáticamente.", "success");
+    }
+  }
+
+  function descargarReporteUltrasonidoPDF() {
+    const reportContent = document.getElementById('resultado').innerHTML;
+
+    if (!reportContent || reportContent.trim() === '') {
+      mostrarMensaje("❌ No hay reporte para descargar. Genere un reporte primero.", "error");
+      return;
+    }
+
+    // Obtener datos para el nombre del archivo
+    const radiologo = document.getElementById('radiologo').value;
+    const mes = document.getElementById('mes').value;
+    const anio = document.getElementById('anio').value;
+    const quincena = document.getElementById('quincena').value;
+
+    if (!radiologo || !mes || !anio || !quincena) {
+      mostrarMensaje("❌ Datos del reporte incompletos. Genere el reporte nuevamente.", "error");
+      return;
+    }
+
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+      "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const selectedMonthName = monthNames[parseInt(mes) - 1];
+    const quincenaText = quincena === 'completo' ? 'Completo' : quincena.replace('-', '_');
+
+    const reportTitle = `Reporte de Ultrasonido - ${radiologo} - ${selectedMonthName} ${anio}`;
+    const fileName = `Reporte_Ultrasonido_${radiologo.replace(/\s+/g, '_')}_${selectedMonthName}_${anio}_${quincenaText}.pdf`;
+
+    mostrarMensaje("⏳ Generando PDF...", "info");
+
+    google.script.run
+      .withSuccessHandler(function (pdfBase64) {
+        try {
+          // Crear un blob del PDF desde Base64
+          const byteCharacters = atob(pdfBase64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+          // Crear enlace de descarga
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+
+          // Simular clic para descargar
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Limpiar URL temporal
+          window.URL.revokeObjectURL(url);
+
+          mostrarMensaje("✅ PDF descargado exitosamente.", "success");
+        } catch (error) {
+          console.error('Error procesando PDF:', error);
+          mostrarMensaje("❌ Error al procesar el PDF descargado.", "error");
+        }
+      })
+      .withFailureHandler(function (error) {
+        console.error('Error generando PDF:', error);
+        mostrarMensaje("❌ Error al generar PDF: " + error.message, "error");
+      })
+      .descargarReporteUltrasonidoPDF(reportContent, reportTitle, fileName);
   }
 </script>

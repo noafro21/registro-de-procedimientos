@@ -248,4 +248,195 @@
       font-size: 16px;
     }
   }
+
+  /* ======= ESTILOS PARA REPORTE DETALLADO DE ULTRASONIDO ======= */
+  .reporte-ultrasonido-section {
+    margin: 20px 0;
+  }
+
+  .reporte-info {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    border-left: 4px solid #FE7743;
+  }
+
+  .reporte-info p {
+    margin: 5px 0;
+    font-size: 14px;
+  }
+
+  .registros-container {
+    margin: 20px 0;
+  }
+
+  .registro-item {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .registro-header {
+    background-color: #f8f9fa;
+    padding: 12px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .registro-numero {
+    background-color: #FE7743;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 12px;
+  }
+
+  .registro-fila {
+    background-color: #273F4F;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
+  .registro-fecha {
+    color: #273F4F;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .ultrasonidos-lista {
+    padding: 15px;
+  }
+
+  .ultrasonidos-lista h4 {
+    color: #273F4F;
+    margin: 0 0 10px 0;
+    font-size: 16px;
+  }
+
+  .tabla-ultrasonidos-detalle {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 13px;
+  }
+
+  .tabla-ultrasonidos-detalle th {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    text-align: center;
+    font-weight: bold;
+    color: #273F4F;
+  }
+
+  .tabla-ultrasonidos-detalle td {
+    border: 1px solid #dee2e6;
+    padding: 8px;
+    text-align: center;
+  }
+
+  .tabla-ultrasonidos-detalle .text-left {
+    text-align: left;
+  }
+
+  .tabla-ultrasonidos-detalle .text-right {
+    text-align: right;
+  }
+
+  .tabla-ultrasonidos-detalle .text-center {
+    text-align: center;
+  }
+
+  .total-registro {
+    background-color: #e9ecef;
+    font-weight: bold;
+  }
+
+  .total-registro td {
+    border-top: 2px solid #273F4F;
+  }
+
+  .resumen-final {
+    margin-top: 30px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    border: 2px solid #FE7743;
+  }
+
+  .resumen-final h3 {
+    color: #273F4F;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+
+  .tabla-resumen-final {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  .tabla-resumen-final th {
+    background-color: #273F4F;
+    color: white;
+    border: 1px solid #273F4F;
+    padding: 12px;
+    text-align: center;
+    font-weight: bold;
+  }
+
+  .tabla-resumen-final td {
+    border: 1px solid #dee2e6;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .total-final {
+    background-color: #FE7743;
+    color: white;
+    font-weight: bold;
+  }
+
+  .total-final td {
+    border: 1px solid #FE7743;
+  }
+
+  /* ======= RESPONSIVE PARA REPORTE DETALLADO ======= */
+  @media (max-width: 768px) {
+    .registro-header {
+      flex-direction: column;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .tabla-ultrasonidos-detalle,
+    .tabla-resumen-final {
+      font-size: 11px;
+    }
+
+    .tabla-ultrasonidos-detalle th,
+    .tabla-ultrasonidos-detalle td,
+    .tabla-resumen-final th,
+    .tabla-resumen-final td {
+      padding: 6px 4px;
+    }
+
+    .reporte-info {
+      padding: 10px;
+    }
+
+    .ultrasonidos-lista {
+      padding: 10px;
+    }
+  }
 </style>

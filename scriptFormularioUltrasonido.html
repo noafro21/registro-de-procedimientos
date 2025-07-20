@@ -1,207 +1,223 @@
 <script>
+  // ====== Mapeos de campos para ultrasonidos ======
+  const mapeoCampos = {
+    fecha_ultrasonido: 'fecha',
+    radiologo: 'radiologo',
+    abdomen_completo: 'abdomen_completo',
+    abdomen_superior: 'abdomen_superior',
+    mama: 'mama',
+    testiculos: 'testiculos',
+    tracto_urinario: 'tracto_urinario',
+    tejidos_blandos: 'tejidos_blandos',
+    tiroides: 'tiroides',
+    articular: 'articular',
+    pelvico: 'pelvico',
+    doppler: 'doppler'
+  };
+
+  // ====== Inicialización al cargar DOM ======
   document.addEventListener('DOMContentLoaded', () => {
     // Establecer la fecha actual por defecto
     const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('fecha_ultrasonido').value = `${yyyy}-${mm}-${dd}`;
+    const year = today.getFullYear();
+    const month = (today.getMonth() + 1).toString().padStart(2, '0');
+    const day = today.getDate().toString().padStart(2, '0');
+    document.getElementById('fecha_ultrasonido').value = `${year}-${month}-${day}`;
 
+    // Cargar radiólogos
     cargarRadiologos();
-    
-    // Vaciar todos los inputs de tipo number al cargar el formulario
+
+    // Configurar campos numéricos
     document.querySelectorAll('input[type="number"]').forEach(input => {
       input.value = "";
-      
-      // ✅ AGREGAR: Validación para evitar números negativos
-      input.addEventListener('input', function() {
+
+      // Validación para evitar números negativos
+      input.addEventListener('input', function () {
         if (this.value < 0) {
           this.value = 0;
         }
       });
     });
+
+    // Configurar validación en tiempo real
+    configurarValidacionTiempoReal();
   });
 
-  function guardarUltrasonido() {
-    const datos = {
-      fecha: document.getElementById('fecha_ultrasonido').value,
-      radiologo: document.getElementById('radiologo').value,
-      abdomen_completo: +document.getElementById('abdomen_completo').value || 0,
-      abdomen_superior: +document.getElementById('abdomen_superior').value || 0,
-      mama: +document.getElementById('mama').value || 0,
-      testiculos: +document.getElementById('testiculos').value || 0,
-      tracto_urinario: +document.getElementById('tracto_urinario').value || 0,
-      tejidos_blandos: +document.getElementById('tejidos_blandos').value || 0,
-      tiroides: +document.getElementById('tiroides').value || 0,
-      articular: +document.getElementById('articular').value || 0,
-      pelvico: +document.getElementById('pelvico').value || 0,
-      doppler: +document.getElementById('doppler').value || 0
-    };
-
-    // ✅ MEJORAR: Validación de campos obligatorios
-    if (!datos.fecha || !datos.radiologo) {
-      mostrarMensaje("Por favor, seleccione una fecha y un radiólogo.", "error");
-      return;
-    }
-
-    // ✅ AGREGAR: Validar que al menos un ultrasonido tenga valor > 0
-    const totalUltrasonidos = datos.abdomen_completo + datos.abdomen_superior + 
-                              datos.mama + datos.testiculos + datos.tracto_urinario + 
-                              datos.tejidos_blandos + datos.tiroides + datos.articular + 
-                              datos.pelvico + datos.doppler;
-
-    if (totalUltrasonidos === 0) {
-      mostrarMensaje("⚠️ Debe ingresar al menos un ultrasonido con cantidad mayor a 0.", "error");
-      return;
-    }
-
-    mostrarMensaje("Guardando registro...", "info");
-
-    // ✅ CAMBIAR: Usar nueva función que guarda ordenadamente
-    google.script.run
-      .withSuccessHandler((resultado) => {
-        if (resultado.success) {
-          mostrarMensaje(`✅ Registro guardado exitosamente en la fila ${resultado.fila}.`, "success");
-          limpiarFormulario();
-        } else {
-          mostrarMensaje("❌ Error: " + resultado.error, "error");
-        }
-      })
-      .withFailureHandler(error => {
-        mostrarMensaje("❌ Error al guardar el registro: " + error.message, "error");
-      })
-      .guardarUltrasonidoOrdenado(datos); // ✅ NUEVA FUNCIÓN
-  }
-
-  // ✅ NUEVA FUNCIÓN: Limpiar formulario de manera más eficiente
-  function limpiarFormulario() {
-    // Resetear formulario
-    document.getElementById("registroUltrasonidoForm").reset();
-    
-    // Restablecer fecha actual
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('fecha_ultrasonido').value = `${yyyy}-${mm}-${dd}`;
-    
-    // Limpiar selector de radiólogo
-    document.getElementById('radiologo').value = "";
-    
-    // Limpiar todos los campos numéricos
-    document.querySelectorAll('input[type="number"]').forEach(input => {
-      input.value = "";
-    });
-
-    // ✅ AGREGAR: Enfocar en el primer campo para facilitar entrada de datos
-    document.getElementById('radiologo').focus();
-  }
-
+  // ====== Cargar radiólogos desde servidor ======
   function cargarRadiologos() {
+    const select = document.getElementById('radiologo');
+    select.innerHTML = '<option disabled selected value="">Cargando radiólogos...</option>';
+
     google.script.run
       .withSuccessHandler(function (radiologosList) {
-        const select = document.getElementById('radiologo');
         select.innerHTML = '<option disabled selected value="">Seleccione radiólogo...</option>';
-        
-        // ✅ MEJORAR: Verificar que la lista no esté vacía
-        if (radiologosList && radiologosList.length > 0) {
+
+        if (Array.isArray(radiologosList) && radiologosList.length > 0) {
           radiologosList.forEach(nombre => {
             const option = document.createElement('option');
             option.value = nombre;
             option.textContent = nombre;
             select.appendChild(option);
           });
+          mostrarMensaje(`✅ ${radiologosList.length} radiólogos cargados correctamente`, "success");
         } else {
           const option = document.createElement('option');
           option.value = "";
           option.textContent = "No hay radiólogos disponibles";
           option.disabled = true;
           select.appendChild(option);
+          mostrarMensaje('⚠️ No se encontraron radiólogos. Verifique la hoja "Personal".', 'error');
         }
       })
-      .withFailureHandler(error => {
-        mostrarMensaje("❌ Error al cargar radiólogos: " + error.message, "error");
+      .withFailureHandler(function (error) {
+        mostrarMensaje('❌ Error al cargar radiólogos: ' + error.message, 'error');
+        select.innerHTML = '<option disabled selected value="">Error al cargar radiólogos</option>';
       })
       .obtenerRadiologos();
   }
 
+  // ====== Guardar registro de ultrasonido ======
+  function guardarUltrasonido() {
+    // Recopilar datos del formulario usando el mapeo
+    const data = {};
+    for (const id in mapeoCampos) {
+      const element = document.getElementById(id);
+      if (element) {
+        if (element.type === 'number') {
+          data[mapeoCampos[id]] = element.value ? parseInt(element.value, 10) : 0;
+        } else {
+          data[mapeoCampos[id]] = element.value;
+        }
+      }
+    }
+
+    // Validar que se haya seleccionado un radiólogo
+    if (!data.radiologo) {
+      mostrarMensaje("Por favor, seleccione un radiólogo.", "error");
+      return;
+    }
+
+    // Validar que al menos un ultrasonido tenga un valor mayor que cero
+    let tieneUltrasonidos = false;
+    for (const key in data) {
+      if (typeof data[key] === 'number' && data[key] > 0) {
+        tieneUltrasonidos = true;
+        break;
+      }
+    }
+    if (!tieneUltrasonidos) {
+      mostrarMensaje("Por favor, ingrese al menos un ultrasonido.", "error");
+      return;
+    }
+
+    mostrarMensaje("Guardando registro...", "info");
+
+    google.script.run
+      .withSuccessHandler(function (resultado) {
+        if (resultado && resultado.success) {
+          mostrarMensaje(`✅ Registro guardado exitosamente en la fila ${resultado.fila}.`, "success");
+        } else {
+          mostrarMensaje("✅ Registro guardado con éxito.", "success");
+        }
+        limpiarFormularioUltrasonidos();
+      })
+      .withFailureHandler(function (error) {
+        mostrarMensaje("❌ Error al guardar el registro: " + error.message, "error");
+      })
+      .guardarRegistroUltrasonido(data);
+  }
+
+  // ====== Limpiar el formulario completamente ======
+  function limpiarFormularioUltrasonidos() {
+    document.querySelectorAll('#registroUltrasonidoForm input, #registroUltrasonidoForm select').forEach(el => {
+      if (el.type === 'date') {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = (today.getMonth() + 1).toString().padStart(2, '0');
+        const day = today.getDate().toString().padStart(2, '0');
+        el.value = `${year}-${month}-${day}`;
+      } else if (el.type === 'number') {
+        el.value = '';
+      } else if (el.tagName === 'SELECT') {
+        el.value = '';
+      }
+    });
+
+    // Poner el foco en el radiólogo para facilitar entrada de datos
+    document.getElementById('radiologo').focus();
+  }
+
+  // ====== Mostrar mensajes al usuario ======
   function mostrarMensaje(mensaje, tipo) {
-    let mensajeDiv = document.getElementById('formMessage');
-    if (!mensajeDiv) {
-      mensajeDiv = document.createElement('div');
-      mensajeDiv.id = 'formMessage';
-      document.getElementById('registroUltrasonidoForm').prepend(mensajeDiv);
-    }
-    
-    mensajeDiv.className = '';
+    const mensajeDiv = document.getElementById('formMessage') || crearElementoMensaje();
     mensajeDiv.textContent = mensaje;
-    
-    if (tipo === 'success') {
-      mensajeDiv.classList.add('alert-success');
-    } else if (tipo === 'error') {
-      mensajeDiv.classList.add('alert-error');
-    } else if (tipo === 'info') {
-      mensajeDiv.classList.add('alert-info');
-    }
-    
-    // ✅ MEJORAR: Auto-ocultar mensajes excepto errores
+    mensajeDiv.className = 'message-area ' + tipo;
+
     if (tipo !== 'error') {
       setTimeout(() => {
         mensajeDiv.textContent = '';
-        mensajeDiv.className = '';
-      }, 3000);
+        mensajeDiv.className = 'message-area';
+      }, 5000);
     }
   }
 
-  // ✅ NUEVA FUNCIÓN: Validar formulario en tiempo real
+  // ====== Crear elemento de mensaje si no existe ======
+  function crearElementoMensaje() {
+    const mensajeDiv = document.createElement('div');
+    mensajeDiv.id = 'formMessage';
+    mensajeDiv.className = 'message-area';
+    const form = document.getElementById('registroUltrasonidoForm');
+    if (form) {
+      form.insertBefore(mensajeDiv, form.firstChild);
+    }
+    return mensajeDiv;
+  }
+
+  // ====== Configurar validación en tiempo real ======
+  function configurarValidacionTiempoReal() {
+    // Event listeners para campos principales
+    ['fecha_ultrasonido', 'radiologo'].forEach(id => {
+      const elemento = document.getElementById(id);
+      if (elemento) {
+        elemento.addEventListener('change', validarFormulario);
+      }
+    });
+
+    // Event listeners para campos numéricos
+    const camposNumericos = Object.keys(mapeoCampos).filter(key =>
+      key !== 'fecha_ultrasonido' && key !== 'radiologo'
+    );
+
+    camposNumericos.forEach(id => {
+      const elemento = document.getElementById(id);
+      if (elemento) {
+        elemento.addEventListener('input', validarFormulario);
+      }
+    });
+  }
+
+  // ====== Validar formulario en tiempo real ======
   function validarFormulario() {
     const fecha = document.getElementById('fecha_ultrasonido').value;
     const radiologo = document.getElementById('radiologo').value;
-    
-    const camposNumericos = [
-      'abdomen_completo', 'abdomen_superior', 'mama', 'testiculos',
-      'tracto_urinario', 'tejidos_blandos', 'tiroides', 'articular',
-      'pelvico', 'doppler'
-    ];
-    
+
+    const camposNumericos = Object.keys(mapeoCampos).filter(key =>
+      key !== 'fecha_ultrasonido' && key !== 'radiologo'
+    );
+
     const total = camposNumericos.reduce((sum, campo) => {
-      return sum + (parseInt(document.getElementById(campo).value) || 0);
+      const elemento = document.getElementById(campo);
+      return sum + (elemento ? (parseInt(elemento.value) || 0) : 0);
     }, 0);
-    
+
     const esValido = fecha && radiologo && total > 0;
-    
+
     // Habilitar/deshabilitar botón de guardar si existe
     const botonGuardar = document.querySelector('button[type="submit"], input[type="submit"]');
     if (botonGuardar) {
       botonGuardar.disabled = !esValido;
     }
-    
+
     return esValido;
   }
-
-  // ✅ AGREGAR: Event listeners para validación en tiempo real
-  document.addEventListener('DOMContentLoaded', () => {
-    // Agregar event listeners después de que se cargue el DOM
-    setTimeout(() => {
-      ['fecha_ultrasonido', 'radiologo'].forEach(id => {
-        const elemento = document.getElementById(id);
-        if (elemento) {
-          elemento.addEventListener('change', validarFormulario);
-        }
-      });
-
-      const camposNumericos = [
-        'abdomen_completo', 'abdomen_superior', 'mama', 'testiculos',
-        'tracto_urinario', 'tejidos_blandos', 'tiroides', 'articular',
-        'pelvico', 'doppler'
-      ];
-
-      camposNumericos.forEach(id => {
-        const elemento = document.getElementById(id);
-        if (elemento) {
-          elemento.addEventListener('input', validarFormulario);
-        }
-      });
-    }, 100);
-  });
 </script>

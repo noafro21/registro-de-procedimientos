@@ -592,17 +592,400 @@ function generarPdfParaDescarga(
       // Continuar sin estilos si no se puede cargar el archivo
     }
 
-    // Construir el HTML completo
+    // Construir el HTML completo con estilos optimizados para PDF
     const fullHtml = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>${pageTitle}</title>
-        <style>${styleContent}</style>
+        <style>
+          /* ===== ESTILOS BASE PARA PDF ===== */
+          * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+          }
+          
+          body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #333;
+            background: white;
+            padding: 20px;
+            max-width: 100%;
+            overflow-x: hidden;
+          }
+          
+          /* ===== RESPONSIVE TABLES ===== */
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            font-size: 11px;
+            word-wrap: break-word;
+            table-layout: auto;
+          }
+          
+          th, td {
+            border: 1px solid #ddd;
+            padding: 6px 4px;
+            text-align: left;
+            vertical-align: top;
+            word-wrap: break-word;
+            max-width: 120px;
+            overflow-wrap: break-word;
+          }
+          
+          th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+            font-size: 10px;
+            text-align: center;
+          }
+          
+          .text-left { text-align: left; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          
+          /* ===== FORZAR LAYOUT HORIZONTAL PARA PDF ===== */
+          html body .pdf-container .registro-item .registro-header {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 15px;
+            width: 100%;
+          }
+          
+          /* ===== HEADERS Y TÍTULOS ===== */
+          h1, h2, h3 {
+            color: #273F4F;
+            margin: 15px 0 10px 0;
+            page-break-after: avoid;
+          }
+          
+          h2 {
+            font-size: 16px;
+            border-bottom: 2px solid #FE7743;
+            padding-bottom: 5px;
+            text-align: center;
+          }
+          
+          h3 {
+            font-size: 14px;
+            color: #FE7743;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 3px;
+          }
+          
+          h4 {
+            font-size: 12px;
+            color: #273F4F;
+            margin: 10px 0 5px 0;
+          }
+          
+          /* ===== REPORTE DETALLADO ULTRASONIDO ===== */
+          .reporte-ultrasonido-section {
+            width: 100%;
+            max-width: 100%;
+          }
+          
+          .reporte-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border-left: 4px solid #FE7743;
+            font-size: 11px;
+          }
+          
+          .reporte-info p {
+            margin: 3px 0;
+          }
+          
+          .registro-item {
+            border: 1px solid #e0e0e0;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            overflow: hidden;
+            page-break-inside: avoid;
+          }
+          
+          /* ===== ENCABEZADO DE REGISTROS - LAYOUT HORIZONTAL ===== */
+          div.registro-item div.registro-header {
+            background-color: #f8f9fa;
+            padding: 6px 10px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 11px;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 15px;
+            min-height: 30px;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          
+          .pdf-container .registro-header {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 15px;
+          }
+          
+          div.registro-header .registro-numero {
+            background-color: #FE7743;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 10px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            display: inline-block;
+          }
+          
+          div.registro-header .registro-fila {
+            background-color: #273F4F;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            display: inline-block;
+          }
+          
+          div.registro-header .registro-fecha {
+            color: #273F4F;
+            font-weight: bold;
+            font-size: 11px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            display: inline-block;
+          }
+          
+          /* Contenedor del header optimizado para horizontal */
+          .registro-header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            gap: 15px;
+          }
+          
+          /* Forzar layout horizontal específicamente para PDF */
+          body .registro-item .registro-header {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+          }
+          
+          /* Evitar que los elementos del header se apilen verticalmente */
+          .registro-header > * {
+            display: inline-flex;
+            align-items: center;
+          }
+          
+          .ultrasonidos-lista {
+            padding: 10px;
+          }
+          
+          .tabla-ultrasonidos-detalle {
+            width: 100%;
+            font-size: 10px;
+          }
+          
+          .tabla-ultrasonidos-detalle th {
+            background-color: #f8f9fa;
+            font-size: 9px;
+            padding: 4px 3px;
+          }
+          
+          .tabla-ultrasonidos-detalle td {
+            padding: 4px 3px;
+            font-size: 10px;
+          }
+          
+          .total-registro {
+            background-color: #e9ecef;
+            font-weight: bold;
+          }
+          
+          .total-registro td {
+            border-top: 2px solid #273F4F;
+            padding: 6px 4px;
+          }
+          
+          .resumen-final {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border: 2px solid #FE7743;
+            page-break-inside: avoid;
+          }
+          
+          .tabla-resumen-final th {
+            background-color: #273F4F;
+            color: white;
+            padding: 8px 6px;
+            font-size: 10px;
+          }
+          
+          .tabla-resumen-final td {
+            padding: 8px 6px;
+            font-size: 11px;
+          }
+          
+          .total-final {
+            background-color: #FE7743;
+            color: white;
+            font-weight: bold;
+          }
+          
+          /* ===== REPORTE AGREGADO (FALLBACK) ===== */
+          .report-header {
+            text-align: center;
+            margin-bottom: 20px;
+            page-break-after: avoid;
+          }
+          
+          .report-info {
+            margin: 10px 0;
+            font-size: 11px;
+          }
+          
+          .report-table {
+            width: 100%;
+            font-size: 10px;
+          }
+          
+          .report-table th {
+            background-color: #f2f2f2;
+            padding: 6px 4px;
+            font-size: 9px;
+          }
+          
+          .report-table td {
+            padding: 5px 4px;
+          }
+          
+          .total-row {
+            background-color: #f8f8f8;
+            font-weight: bold;
+          }
+          
+          .no-data {
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            padding: 15px;
+          }
+          
+          /* ===== UTILIDADES ===== */
+          .page-break {
+            page-break-before: always;
+          }
+          
+          .no-page-break {
+            page-break-inside: avoid;
+          }
+          
+          /* ===== RESPONSIVE PARA PDF ===== */
+          @media print {
+            body {
+              font-size: 11px;
+              padding: 15px;
+            }
+            
+            table {
+              font-size: 10px;
+            }
+            
+            th, td {
+              padding: 3px 2px;
+              font-size: 9px;
+            }
+            
+            .registro-header {
+              display: flex;
+              flex-direction: row;
+              justify-content: space-between;
+              gap: 10px;
+              text-align: left;
+              padding: 4px 8px;
+              font-size: 10px;
+              flex-wrap: nowrap;
+              align-items: center;
+            }
+            
+            .registro-header > span {
+              display: inline-block;
+              white-space: nowrap;
+            }
+            
+            .reporte-info {
+              padding: 8px;
+            }
+          }
+          
+          /* ===== ADAPTACIÓN POR TAMAÑO DE CONTENIDO ===== */
+          @media (max-width: 600px) {
+            body {
+              padding: 10px;
+            }
+            
+            table {
+              font-size: 9px;
+            }
+            
+            th, td {
+              padding: 2px 1px;
+              font-size: 8px;
+            }
+            
+            h2 {
+              font-size: 14px;
+            }
+            
+            h3 {
+              font-size: 12px;
+            }
+            
+            /* Mantener formato horizontal en pantallas pequeñas */
+            .registro-header {
+              flex-direction: row;
+              justify-content: space-between;
+              gap: 8px;
+              padding: 3px 6px;
+              font-size: 9px;
+            }
+            
+            .registro-numero, .registro-fila, .registro-fecha {
+              font-size: 8px;
+              padding: 2px 4px;
+            }
+          }
+          
+          ${styleContent}
+        </style>
       </head>
       <body>
-        ${htmlContent}
+        <div class="pdf-container">
+          ${htmlContent}
+        </div>
       </body>
       </html>
     `;
@@ -2210,39 +2593,58 @@ function mostrarFormularioUltrasonido() {
 }
 
 function guardarRegistroUltrasonido(data) {
-  if (!data || typeof data !== "object") {
-    throw new Error(
-      "❌ No se recibieron datos válidos para el registro de ultrasonido."
+  try {
+    if (!data || typeof data !== "object") {
+      throw new Error(
+        "❌ No se recibieron datos válidos para el registro de ultrasonido."
+      );
+    }
+
+    const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
+      "RegistroUltrasonidos"
     );
+    if (!hoja) {
+      throw new Error("❌ La hoja 'RegistroUltrasonidos' no existe.");
+    }
+
+    let [year, month, day] = data.fecha.split("-").map(Number);
+    let fechaRegistro = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+
+    const fila = [
+      fechaRegistro,
+      data.radiologo || "",
+      data.abdomen_completo || 0,
+      data.abdomen_superior || 0,
+      data.mama || 0,
+      data.testiculos || 0,
+      data.tracto_urinario || 0,
+      data.tejidos_blandos || 0,
+      data.tiroides || 0,
+      data.articular || 0,
+      data.pelvico || 0,
+      data.doppler || 0,
+    ];
+
+    const ultimaFila = hoja.getLastRow();
+    const filaDestino = ultimaFila + 1;
+    hoja.getRange(filaDestino, 1, 1, fila.length).setValues([fila]);
+
+    // Formatear la celda de fecha
+    hoja.getRange(filaDestino, 1).setNumberFormat("dd/MM/yyyy");
+
+    Logger.log(
+      "✅ Registro de ultrasonido guardado con éxito en la fila " + filaDestino
+    );
+
+    return {
+      success: true,
+      fila: filaDestino,
+      message: "Registro guardado exitosamente",
+    };
+  } catch (error) {
+    Logger.log("❌ Error al guardar registro de ultrasonido: " + error.message);
+    throw new Error("Error al guardar el registro: " + error.message);
   }
-
-  const hoja = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(
-    "RegistroUltrasonidos"
-  );
-  if (!hoja) {
-    throw new Error("❌ La hoja 'RegistroUltrasonidos' no existe.");
-  }
-
-  let [year, month, day] = data.fecha.split("-").map(Number);
-  let fechaRegistro = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-
-  const fila = [
-    fechaRegistro,
-    data.radiologo || "",
-    data.abdomen_completo || 0,
-    data.abdomen_superior || 0,
-    data.mama || 0,
-    data.testiculos || 0,
-    data.tracto_urinario || 0,
-    data.tejidos_blandos || 0,
-    data.tiroides || 0,
-    data.articular || 0,
-    data.pelvico || 0,
-    data.doppler || 0,
-  ];
-
-  hoja.appendRow(fila);
-  Logger.log("✅ Registro de ultrasonido guardado con éxito.");
 }
 
 function mostrarReportePagoUltrasonido() {
@@ -2327,6 +2729,7 @@ function calcularPagosRadiologia(radiologo, mes, anio, quincena) {
   };
 
   const resumen = {};
+  const detalleRegistros = []; // ✅ NUEVO: Array para detalles por registro
   let totalGananciaSinIVA = 0;
   let totalIVA = 0;
   let totalGananciaConIVA = 0;
@@ -2344,7 +2747,7 @@ function calcularPagosRadiologia(radiologo, mes, anio, quincena) {
   });
 
   Logger.log("--- Procesando registros de ultrasonido ---");
-  datosRegistros.slice(1).forEach((fila) => {
+  datosRegistros.slice(1).forEach((fila, indiceRealFila) => {
     const fecha = new Date(fila[0]);
     const filaRadiologo = fila[1];
     const filaMes = fecha.getMonth() + 1;
@@ -2355,6 +2758,21 @@ function calcularPagosRadiologia(radiologo, mes, anio, quincena) {
       return;
     if (quincena === "1-15" && filaDia > 15) return;
     if (quincena === "16-31" && filaDia <= 15) return;
+
+    // ✅ NUEVO: Crear objeto de detalle para este registro
+    const registroDetalle = {
+      fecha: fecha.toLocaleDateString("es-CR", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      fechaOriginal: fecha.toISOString(),
+      persona: filaRadiologo,
+      fila: indiceRealFila + 2, // +2 porque slice(1) y las filas empiezan en 1
+      ultrasonidos: [],
+      subtotalRegistro: 0,
+    };
 
     const sheetColumnOrder = [
       "Abdomen Completo",
@@ -2396,11 +2814,24 @@ function calcularPagosRadiologia(radiologo, mes, anio, quincena) {
           const ivaMonto = gananciaSinIVA * IVA_PERCENTAGE;
           const gananciaConIVA = gananciaSinIVA + ivaMonto;
 
+          // Actualizar resumen agregado
           resumen[key].cantidad += cantidad;
           resumen[key].ganancia_sin_iva += gananciaSinIVA;
           resumen[key].iva_monto += ivaMonto;
           resumen[key].ganancia_con_iva += gananciaConIVA;
           resumen[key].costo_unitario = costoUnitario;
+
+          // ✅ NUEVO: Agregar al detalle del registro
+          registroDetalle.ultrasonidos.push({
+            nombre: tipoUltrasonido,
+            cantidad: cantidad,
+            costoUnitario: costoUnitario,
+            subtotal: gananciaSinIVA,
+            iva: ivaMonto,
+            total: gananciaConIVA,
+          });
+
+          registroDetalle.subtotalRegistro += gananciaSinIVA;
 
           totalGananciaSinIVA += gananciaSinIVA;
           totalIVA += ivaMonto;
@@ -2409,9 +2840,29 @@ function calcularPagosRadiologia(radiologo, mes, anio, quincena) {
       }
       currentSheetColIndex++;
     }
+
+    // ✅ NUEVO: Solo agregar el registro si tiene ultrasonidos
+    if (registroDetalle.ultrasonidos.length > 0) {
+      detalleRegistros.push(registroDetalle);
+    }
   });
   Logger.log("--- Fin del procesamiento de registros ---");
-  return { resumen, totalGananciaSinIVA, totalIVA, totalGananciaConIVA };
+
+  // ✅ NUEVO: Devolver respuesta estructurada con detalle de registros
+  return {
+    success: true,
+    resumen,
+    totalGananciaSinIVA,
+    totalIVA,
+    totalGananciaConIVA,
+    detalleRegistros, // ✅ NUEVO: Detalle por registro
+    metadatos: {
+      radiologo: radiologo,
+      periodo: `${mes}/${anio}`,
+      quincena: quincena,
+      totalRegistros: detalleRegistros.length,
+    },
+  };
 }
 
 // --- Funciones Wrapper para Enviar/Descargar Reportes de Ultrasonido ---
@@ -2435,9 +2886,9 @@ function enviarReporteUltrasonido(
 function descargarReporteUltrasonidoPDF(htmlContent, reportTitle, fileName) {
   return generarPdfParaDescarga(
     htmlContent,
+    fileName,
     "stylesReportePagoUltrasonido",
-    reportTitle,
-    fileName
+    reportTitle
   );
 }
 
