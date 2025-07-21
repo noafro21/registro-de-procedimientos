@@ -3980,6 +3980,310 @@ function buscarBiopsiasServidorV2(searchType, searchValue) {
 }
 
 /**
+ * Función mejorada para buscar biopsias con múltiples opciones
+ * @param {string} searchType - Tipo de búsqueda: "fecha", "cedula", "nombre", "estado", "mes"
+ * @param {string} searchValue - Valor a buscar
+ * @param {string} searchValue2 - Valor adicional (para búsquedas de mes/año)
+ * @returns {Array} - Resultados de la búsqueda con índice de fila
+ */
+function buscarBiopsiasServidorMejorado(searchType, searchValue, searchValue2) {
+  try {
+    // Asegurar que los parámetros no sean undefined
+    searchType = searchType || "";
+    searchValue = searchValue || "";
+    searchValue2 = searchValue2 || null;
+
+    Logger.log(
+      `🔍 BÚSQUEDA: tipo=${searchType}, valor1=${searchValue}, valor2=${searchValue2}`
+    );
+    Logger.log(
+      `🔍 BÚSQUEDA TIPOS: tipo=${typeof searchType}, valor1=${typeof searchValue}, valor2=${typeof searchValue2}`
+    );
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hoja = ss.getSheetByName("RegistroBiopsias");
+
+    if (!hoja) {
+      Logger.log("❌ ERROR: La hoja 'RegistroBiopsias' no existe");
+      return [];
+    }
+
+    const datos = hoja.getDataRange().getValues();
+    Logger.log(`📊 Total de filas: ${datos.length}`);
+
+    if (datos.length <= 1) {
+      Logger.log("ℹ️ No hay datos para buscar");
+      return [];
+    }
+
+    const resultados = [];
+
+    // Funciones auxiliares
+    const normalizarTexto = (str) =>
+      String(str || "")
+        .toLowerCase()
+        .trim();
+    const normalizarIdentificacion = (str) =>
+      String(str || "")
+        .replace(/[-\s]/g, "")
+        .toUpperCase();
+    const formatearFecha = (fecha) => {
+      if (fecha instanceof Date) {
+        return Utilities.formatDate(
+          fecha,
+          Session.getScriptTimeZone(),
+          "yyyy-MM-dd"
+        );
+      } else if (typeof fecha === "string") {
+        const fechaTmp = new Date(fecha);
+        return Utilities.formatDate(
+          fechaTmp,
+          Session.getScriptTimeZone(),
+          "yyyy-MM-dd"
+        );
+      }
+      return "";
+    };
+
+    // Procesar cada fila (saltar encabezado)
+    for (let i = 1; i < datos.length; i++) {
+      const fila = datos[i];
+      let coincide = false;
+
+      Logger.log(`🔍 Procesando fila ${i} con tipo: ${searchType}`);
+
+      switch (searchType) {
+        case "fecha":
+          const fechaHoja = formatearFecha(fila[0]);
+          const fechaBusqueda = searchValue;
+          Logger.log(`📅 Comparando: ${fechaHoja} vs ${fechaBusqueda}`);
+          coincide = fechaHoja === fechaBusqueda;
+          break;
+
+        case "mes":
+          // Búsqueda por mes y año específico
+          if (fila[0] instanceof Date || typeof fila[0] === "string") {
+            const fecha = new Date(fila[0]);
+            const mesHoja = fecha.getMonth() + 1; // getMonth() es 0-based
+            const anioHoja = fecha.getFullYear();
+            const mesBusqueda = parseInt(searchValue);
+            const anioBusqueda = parseInt(searchValue2);
+
+            Logger.log(
+              `📅 MES: Comparando ${mesHoja}/${anioHoja} vs ${mesBusqueda}/${anioBusqueda}`
+            );
+            coincide = mesHoja === mesBusqueda && anioHoja === anioBusqueda;
+          }
+          break;
+
+        case "cedula":
+          const identificacionHoja = normalizarIdentificacion(fila[3]);
+          const identificacionBusqueda = normalizarIdentificacion(searchValue);
+          Logger.log(
+            `🆔 CEDULA DETALLE: Fila ${i}, Hoja="${fila[3]}" -> "${identificacionHoja}", Búsqueda="${searchValue}" -> "${identificacionBusqueda}"`
+          );
+          coincide = identificacionHoja === identificacionBusqueda;
+          if (coincide) {
+            Logger.log(`🎯 CEDULA MATCH encontrado en fila ${i + 1}`);
+          }
+          break;
+
+        case "nombre":
+          const nombreHoja = normalizarTexto(fila[5]); // Columna F - nombre_cliente
+          const nombreBusqueda = normalizarTexto(searchValue);
+          Logger.log(
+            `👤 Comparando: "${nombreHoja}" incluye "${nombreBusqueda}"`
+          );
+          coincide = nombreHoja.includes(nombreBusqueda);
+          break;
+
+        case "estado":
+          // Determinar estado basado en checkboxes
+          let estadoMuestra = "registrada";
+          const recibida = Boolean(fila[1]); // Columna B
+          const enviada = Boolean(fila[2]); // Columna C
+
+          if (recibida && enviada) {
+            estadoMuestra = "completada";
+          } else if (enviada) {
+            estadoMuestra = "enviada";
+          } else if (recibida) {
+            estadoMuestra = "recibida";
+          }
+
+          Logger.log(
+            `📋 Estado calculado: ${estadoMuestra} vs buscado: ${searchValue}`
+          );
+          coincide = estadoMuestra === searchValue;
+          break;
+
+        default:
+          Logger.log(`⚠️ Tipo de búsqueda no reconocido: ${searchType}`);
+          break;
+      }
+
+      if (coincide) {
+        // Agregar número de fila al final para edición posterior
+        const filaConIndice = [...fila, i + 1];
+        resultados.push(filaConIndice);
+        Logger.log(`✅ Coincidencia encontrada en fila ${i + 1}`);
+      }
+    }
+
+    Logger.log(`🎯 Resultados encontrados: ${resultados.length}`);
+    return resultados;
+  } catch (error) {
+    Logger.log(`❌ ERROR en búsqueda: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Actualiza un registro completo de biopsia
+ * @param {number} fila - Número de fila a actualizar
+ * @param {Object} datos - Datos actualizados
+ * @returns {boolean} - true si se actualizó correctamente
+ */
+function actualizarRegistroBiopsia(fila, datos) {
+  try {
+    Logger.log(`📝 ACTUALIZAR: Fila ${fila}, datos: ${JSON.stringify(datos)}`);
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hoja = ss.getSheetByName("RegistroBiopsias");
+
+    if (!hoja) {
+      throw new Error("Hoja RegistroBiopsias no encontrada");
+    }
+
+    // Validar datos obligatorios
+    if (!datos.fecha_toma || !datos.nombre_cliente || !datos.medico) {
+      throw new Error("Faltan datos obligatorios");
+    }
+
+    // Crear la fila de datos actualizada
+    const filaActualizada = [
+      datos.fecha_toma, // A: fecha_toma
+      Boolean(datos.recibida), // B: recibida
+      Boolean(datos.enviada), // C: enviada
+      datos.cedula || "", // D: cedula
+      datos.telefono || "", // E: telefono
+      datos.nombre_cliente, // F: nombre_cliente
+      Number(datos.frascos_gastro) || 0, // G: frascos_gastro
+      Number(datos.frascos_colon) || 0, // H: frascos_colon
+      datos.medico, // I: medico
+      datos.comentario || "", // J: comentario
+    ];
+
+    // Actualizar la fila
+    hoja
+      .getRange(fila, 1, 1, filaActualizada.length)
+      .setValues([filaActualizada]);
+
+    // Aplicar formatos
+    hoja.getRange(fila, 1).setNumberFormat("yyyy-mm-dd");
+    hoja.getRange(fila, 2, 1, 2).insertCheckboxes();
+
+    // Aplicar coloración si ambos checkboxes están marcados
+    if (datos.recibida && datos.enviada) {
+      hoja.getRange(fila, 1, 1, 8).setBackground("#FFFF99"); // Amarillo
+    } else {
+      hoja.getRange(fila, 1, 1, 8).setBackground(null); // Sin color
+    }
+
+    Logger.log(
+      `✅ ACTUALIZAR: Registro actualizado correctamente en fila ${fila}`
+    );
+    return true;
+  } catch (error) {
+    Logger.log(`❌ ACTUALIZAR: Error: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Actualiza solo el estado de los checkboxes de una biopsia
+ * @param {number} fila - Número de fila a actualizar
+ * @param {boolean} recibida - Estado del checkbox "Recibida"
+ * @param {boolean} enviada - Estado del checkbox "Enviada"
+ * @returns {boolean} - true si se actualizó correctamente
+ */
+function actualizarEstadosBiopsia(fila, recibida, enviada) {
+  try {
+    Logger.log(
+      `📋 ESTADOS: Fila ${fila}, recibida: ${recibida}, enviada: ${enviada}`
+    );
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hoja = ss.getSheetByName("RegistroBiopsias");
+
+    if (!hoja) {
+      throw new Error("Hoja RegistroBiopsias no encontrada");
+    }
+
+    // Actualizar checkboxes
+    hoja.getRange(fila, 2).setValue(Boolean(recibida)); // Columna B
+    hoja.getRange(fila, 3).setValue(Boolean(enviada)); // Columna C
+
+    // Aplicar coloración si ambos están marcados
+    if (recibida && enviada) {
+      hoja.getRange(fila, 1, 1, 8).setBackground("#FFFF99"); // Amarillo
+      Logger.log(`🎨 ESTADOS: Aplicada coloración amarilla a fila ${fila}`);
+    } else {
+      hoja.getRange(fila, 1, 1, 8).setBackground(null); // Sin color
+      Logger.log(`🎨 ESTADOS: Removida coloración de fila ${fila}`);
+    }
+
+    Logger.log(
+      `✅ ESTADOS: Estados actualizados correctamente en fila ${fila}`
+    );
+    return true;
+  } catch (error) {
+    Logger.log(`❌ ESTADOS: Error: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Obtiene los datos de una fila específica para edición
+ * @param {number} fila - Número de fila a obtener
+ * @returns {Object} - Datos de la fila
+ */
+function obtenerDatosBiopsia(fila) {
+  try {
+    Logger.log(`📖 OBTENER: Fila ${fila}`);
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const hoja = ss.getSheetByName("RegistroBiopsias");
+
+    if (!hoja) {
+      throw new Error("Hoja RegistroBiopsias no encontrada");
+    }
+
+    const datos = hoja.getRange(fila, 1, 1, 10).getValues()[0];
+
+    const resultado = {
+      fecha_toma: datos[0],
+      recibida: Boolean(datos[1]),
+      enviada: Boolean(datos[2]),
+      cedula: datos[3] || "",
+      telefono: datos[4] || "",
+      nombre_cliente: datos[5] || "",
+      frascos_gastro: Number(datos[6]) || 0,
+      frascos_colon: Number(datos[7]) || 0,
+      medico: datos[8] || "",
+      comentario: datos[9] || "",
+      fila: fila,
+    };
+
+    Logger.log(`✅ OBTENER: Datos obtenidos: ${JSON.stringify(resultado)}`);
+    return resultado;
+  } catch (error) {
+    Logger.log(`❌ OBTENER: Error: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
  * Actualiza el estado de una biopsia (Recibida o Enviada).
  * @param {number} rowIndex - Índice de la fila a actualizar.
  * @param {string} column - Columna a actualizar: "recibida" o "enviada".
@@ -5863,4 +6167,421 @@ function probarDiagnosticoFiltrado() {
   nombresPrueba.forEach((nombre) => {
     diagnosticarFiltradoPersonal(nombre);
   });
+}
+
+/**
+ * Función de prueba para diagnosticar problemas de comunicación frontend-backend
+ */
+function testBusquedaBiopsias(tipo, valor, valor2) {
+  Logger.log(`🧪 TEST: Recibidos ${arguments.length} argumentos`);
+  Logger.log(`🧪 TEST: tipo='${tipo}', valor='${valor}', valor2='${valor2}'`);
+  Logger.log(
+    `🧪 TEST: Tipos - tipo:${typeof tipo}, valor:${typeof valor}, valor2:${typeof valor2}`
+  );
+
+  return {
+    argumentos: arguments.length,
+    tipo: tipo,
+    valor: valor,
+    valor2: valor2,
+    mensaje: "Función de prueba ejecutada correctamente",
+  };
+}
+
+/**
+ * Función para debugging manual - ejecutar desde el editor de Apps Script
+ */
+function debugBusquedaCedula() {
+  Logger.log("🧪 INICIO DEBUG - Búsqueda por cédula");
+
+  try {
+    const resultado = buscarBiopsiasServidorMejorado(
+      "cedula",
+      "801180052",
+      null
+    );
+    Logger.log(
+      `🧪 RESULTADO DEBUG: ${resultado.length} resultados encontrados`
+    );
+
+    if (resultado.length > 0) {
+      Logger.log("🧪 PRIMER RESULTADO:");
+      Logger.log(JSON.stringify(resultado[0]));
+    }
+
+    return resultado;
+  } catch (error) {
+    Logger.log(`🧪 ERROR DEBUG: ${error.message}`);
+    Logger.log(`🧪 STACK: ${error.stack}`);
+    return [];
+  }
+}
+
+// Nueva función idéntica para evitar problemas de caché
+function buscarBiopsiasServidor_v2(parametros) {
+  try {
+    Logger.log(
+      "🚀 buscarBiopsiasServidor_v2 - Iniciando con parámetros:",
+      parametros
+    );
+
+    // Extraer parámetros del objeto
+    const {
+      type: searchType,
+      value: searchValue,
+      value2: searchValue2,
+    } = parametros || {};
+
+    Logger.log(
+      `🔍 Tipo de búsqueda: ${searchType}, Valor: ${searchValue}, Valor2: ${searchValue2}`
+    );
+
+    // Funciones auxiliares (igual que en la función original que funciona)
+    const normalizarTexto = (str) =>
+      String(str || "")
+        .toLowerCase()
+        .trim();
+    const normalizarIdentificacion = (str) =>
+      String(str || "")
+        .replace(/[-\s]/g, "")
+        .toUpperCase();
+    const formatearFecha = (fecha) => {
+      if (!fecha) return "";
+      const fechaObj = new Date(fecha);
+      if (isNaN(fechaObj.getTime())) return "";
+      return fechaObj.toISOString().split("T")[0];
+    };
+
+    // Usar openById() para acceso desde el frontend web
+    const ss = SpreadsheetApp.openById(
+      "1NjqsT9ApcCb9bpkNY2K01Z9_YRkxoSlPYD52Ku0dGS8"
+    );
+    const hoja = ss.getSheetByName("RegistroBiopsias");
+
+    if (!hoja) {
+      Logger.log("❌ Error: Hoja 'RegistroBiopsias' no encontrada");
+      return [];
+    }
+
+    // Usar getDataRange() como en la función original
+    const datos = hoja.getDataRange().getValues();
+    Logger.log(`📊 Total de filas: ${datos.length}`);
+
+    const resultados = [];
+
+    // Procesar cada fila (saltando el encabezado) - como en la función original
+    for (let i = 1; i < datos.length; i++) {
+      const fila = datos[i];
+      let coincide = false;
+
+      Logger.log(`🔍 Procesando fila ${i} con tipo: ${searchType}`);
+
+      switch (searchType) {
+        case "cedula":
+          const identificacionHoja = normalizarIdentificacion(fila[3]);
+          const identificacionBusqueda = normalizarIdentificacion(searchValue);
+          Logger.log(
+            `🆔 CEDULA DETALLE: Fila ${i}, Hoja="${fila[3]}" -> "${identificacionHoja}", Búsqueda="${searchValue}" -> "${identificacionBusqueda}"`
+          );
+          coincide = identificacionHoja === identificacionBusqueda;
+          if (coincide) {
+            Logger.log(`🎯 CEDULA MATCH encontrado en fila ${i + 1}`);
+          }
+          break;
+
+        case "nombre":
+          const nombreHoja = normalizarTexto(fila[5]);
+          const nombreBusqueda = normalizarTexto(searchValue);
+          Logger.log(
+            `👤 NOMBRE: Comparando "${nombreHoja}" incluye "${nombreBusqueda}"`
+          );
+          coincide = nombreHoja.includes(nombreBusqueda);
+          break;
+
+        case "fecha":
+          const fechaHoja = formatearFecha(fila[0]);
+          const fechaBusqueda = searchValue;
+          Logger.log(
+            `📅 FECHA: Comparando "${fechaHoja}" vs "${fechaBusqueda}"`
+          );
+          coincide = fechaHoja === fechaBusqueda;
+          break;
+
+        case "mes":
+          if (fila[0] instanceof Date || typeof fila[0] === "string") {
+            const fecha = new Date(fila[0]);
+            const mesHoja = fecha.getMonth() + 1;
+            const anioHoja = fecha.getFullYear();
+            const mesBusqueda = parseInt(searchValue);
+            const anioBusqueda = parseInt(searchValue2);
+            Logger.log(
+              `📅 MES: Comparando ${mesHoja}/${anioHoja} vs ${mesBusqueda}/${anioBusqueda}`
+            );
+            coincide = mesHoja === mesBusqueda && anioHoja === anioBusqueda;
+          }
+          break;
+
+        case "estado":
+          const estadoHoja = String(fila[9] || "")
+            .toLowerCase()
+            .trim();
+          const estadoBusqueda = searchValue.toLowerCase().trim();
+          Logger.log(
+            `📋 ESTADO: Comparando "${estadoHoja}" vs "${estadoBusqueda}"`
+          );
+          coincide = estadoHoja === estadoBusqueda;
+          break;
+      }
+
+      if (coincide) {
+        Logger.log(`✅ Match encontrado en fila ${i + 1}`);
+        // Usar el mismo formato que la función original
+        resultados.push({
+          fila: i + 1, // Número de fila real
+          fecha: fila[0],
+          numeroRequisicion: fila[1],
+          codigoProcedimiento: fila[2],
+          identificacion: fila[3],
+          tipoIdentificacion: fila[4],
+          nombreCliente: fila[5],
+          precioProcedimiento: fila[6],
+          tipoProcedimiento: fila[7],
+          sede: fila[8],
+          estado: fila[9],
+        });
+      }
+    }
+
+    Logger.log(`🎯 Total de resultados encontrados: ${resultados.length}`);
+    return resultados;
+  } catch (error) {
+    Logger.log("❌ Error en buscarBiopsiasServidor_v2:", error.toString());
+    return [];
+  }
+}
+
+// Función de prueba para verificar comunicación
+function testBusquedaCedula() {
+  const parametros = {
+    type: "cedula",
+    value: "801180052",
+    value2: null,
+  };
+
+  console.log("🧪 TEST: Probando buscarBiopsiasServidor_v2");
+  console.log("🧪 TEST: Parámetros:", parametros);
+
+  const resultado = buscarBiopsiasServidor_v2(parametros);
+
+  console.log("🧪 TEST: Resultado:", resultado);
+  console.log("🧪 TEST: Cantidad de resultados:", resultado.length);
+
+  return resultado;
+}
+
+// Función súper simple para probar comunicación
+function testComunicacion(parametros) {
+  Logger.log("🧪 testComunicacion recibió:", parametros);
+  return {
+    mensaje: "Comunicación exitosa",
+    parametrosRecibidos: parametros,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function buscarBiopsiasServidor_v3(parametros) {
+  Logger.log("🚀 V3 - Parámetros recibidos:", JSON.stringify(parametros));
+
+  try {
+    // Verificar que recibimos un objeto
+    if (typeof parametros !== "object" || parametros === null) {
+      Logger.log("❌ V3 - Parámetros no es un objeto válido");
+      return [];
+    }
+
+    const { type, value, value2 } = parametros;
+    Logger.log(
+      `🔍 V3 - Extracted: type=${type}, value=${value}, value2=${value2}`
+    );
+
+    // 🔧 CORREGIDO: Usar el ID correcto del spreadsheet
+    Logger.log("🔗 V3 - Intentando acceder al spreadsheet...");
+    const ss = SpreadsheetApp.openById(
+      "1X6NuCXLOMKRhGcVBFK15QwXht1CEw0NEenu9LrsydeQ" // ✅ ID CORRECTO
+    );
+    Logger.log("✅ V3 - Spreadsheet obtenido correctamente");
+
+    // 🔧 CORREGIDO: Usar el nombre correcto de la hoja
+    const hoja = ss.getSheetByName("RegistroBiopsias"); // ✅ NOMBRE CORRECTO
+    if (!hoja) {
+      Logger.log("❌ V3 - Hoja 'RegistroBiopsias' no encontrada");
+      Logger.log("📋 V3 - Hojas disponibles:");
+      ss.getSheets().forEach((sheet) => {
+        Logger.log(`   - ${sheet.getName()}`);
+      });
+      return [];
+    }
+    Logger.log("✅ V3 - Hoja encontrada");
+
+    const datos = hoja.getDataRange().getValues();
+    Logger.log(`📊 V3 - Total de filas obtenidas: ${datos.length}`);
+
+    if (datos.length <= 1) {
+      Logger.log("ℹ️ V3 - No hay datos para buscar");
+      return [];
+    }
+
+    // 🔧 IMPLEMENTAR búsqueda real según el tipo
+    const resultados = [];
+
+    // Funciones auxiliares de normalización
+    const normalizarTexto = (str) =>
+      String(str || "")
+        .toLowerCase()
+        .trim();
+    const normalizarIdentificacion = (str) =>
+      String(str || "")
+        .replace(/[-\s]/g, "")
+        .toUpperCase();
+    const formatearFecha = (fecha) => {
+      if (!fecha) return "";
+      const fechaObj = new Date(fecha);
+      if (isNaN(fechaObj.getTime())) return "";
+      return fechaObj.toISOString().split("T")[0];
+    };
+
+    Logger.log(`🔍 V3 - Iniciando búsqueda tipo: ${type}`);
+
+    // Procesar cada fila (saltando encabezado)
+    for (let i = 1; i < datos.length; i++) {
+      const fila = datos[i];
+      let coincide = false;
+
+      switch (type) {
+        case "cedula":
+          const identificacionHoja = normalizarIdentificacion(fila[3]); // Columna D
+          const identificacionBusqueda = normalizarIdentificacion(value);
+          Logger.log(
+            `🆔 V3 - Comparando: "${identificacionHoja}" vs "${identificacionBusqueda}"`
+          );
+          coincide = identificacionHoja === identificacionBusqueda;
+          break;
+
+        case "nombre":
+          const nombreHoja = normalizarTexto(fila[5]); // Columna F
+          const nombreBusqueda = normalizarTexto(value);
+          Logger.log(
+            `👤 V3 - Comparando: "${nombreHoja}" incluye "${nombreBusqueda}"`
+          );
+          coincide = nombreHoja.includes(nombreBusqueda);
+          break;
+
+        case "fecha":
+          const fechaHoja = formatearFecha(fila[0]); // Columna A
+          const fechaBusqueda = value;
+          Logger.log(
+            `📅 V3 - Comparando: "${fechaHoja}" vs "${fechaBusqueda}"`
+          );
+          coincide = fechaHoja === fechaBusqueda;
+          break;
+
+        case "mes":
+          if (fila[0] && value2) {
+            const fecha = new Date(fila[0]);
+            const mesHoja = fecha.getMonth() + 1;
+            const anioHoja = fecha.getFullYear();
+            const mesBusqueda = parseInt(value);
+            const anioBusqueda = parseInt(value2);
+            Logger.log(
+              `📅 V3 - Comparando mes: ${mesHoja}/${anioHoja} vs ${mesBusqueda}/${anioBusqueda}`
+            );
+            coincide = mesHoja === mesBusqueda && anioHoja === anioBusqueda;
+          }
+          break;
+
+        case "estado":
+          // Determinar estado basado en checkboxes
+          let estadoMuestra = "registrada";
+          const recibida = Boolean(fila[1]); // Columna B
+          const enviada = Boolean(fila[2]); // Columna C
+
+          if (recibida && enviada) {
+            estadoMuestra = "completada";
+          } else if (enviada) {
+            estadoMuestra = "enviada";
+          } else if (recibida) {
+            estadoMuestra = "recibida";
+          }
+
+          Logger.log(
+            `📋 V3 - Estado calculado: "${estadoMuestra}" vs buscado: "${value}"`
+          );
+          coincide = estadoMuestra === value;
+          break;
+
+        default:
+          Logger.log(`⚠️ V3 - Tipo de búsqueda no reconocido: ${type}`);
+          break;
+      }
+
+      if (coincide) {
+        // Agregar número de fila al final para edición posterior
+        const filaConIndice = [...fila, i + 1];
+        resultados.push(filaConIndice);
+        Logger.log(`✅ V3 - Coincidencia encontrada en fila ${i + 1}`);
+      }
+    }
+
+    Logger.log(`🎯 V3 - Resultados encontrados: ${resultados.length}`);
+    return resultados;
+  } catch (error) {
+    Logger.log("❌ V3 - Error:", error.toString());
+    return [
+      {
+        error: true,
+        mensaje: error.toString(),
+      },
+    ];
+  }
+}
+
+// Función para revisar datos en la hoja
+function revisarDatosHoja() {
+  try {
+    const ss = SpreadsheetApp.openById(
+      "1NjqsT9ApcCb9bpkNY2K01Z9_YRkxoSlPYD52Ku0dGS8"
+    );
+    const hoja = ss.getSheetByName("RegistroBiopsias");
+
+    if (!hoja) {
+      console.log("❌ Hoja no encontrada");
+      return;
+    }
+
+    const ultimaFila = hoja.getLastRow();
+    console.log(`📊 Última fila: ${ultimaFila}`);
+
+    if (ultimaFila <= 1) {
+      console.log("📋 No hay datos");
+      return;
+    }
+
+    // Leer las primeras 5 filas para ver la estructura
+    const rango = hoja.getRange(1, 1, Math.min(ultimaFila, 6), 10);
+    const datos = rango.getValues();
+
+    console.log("📋 Encabezados:", datos[0]);
+
+    for (let i = 1; i < datos.length; i++) {
+      console.log(`📋 Fila ${i + 1}:`, datos[i]);
+      if (datos[i][3]) {
+        // Si hay cédula
+        console.log(`🆔 Cédula en fila ${i + 1}: "${datos[i][3]}"`);
+      }
+    }
+
+    return datos;
+  } catch (error) {
+    console.log("❌ Error:", error.toString());
+  }
 }

@@ -2,8 +2,10 @@
 <html>
 
 <head>
+    <title>Buscar Biopsias</title>
     <base target="_top">
     <?!= include('stylesBuscarBiopsias'); ?>
+    <?!= include('stylesBotonRegresar'); ?>
 </head>
 
 <body>
@@ -26,6 +28,10 @@
                         Nombre
                     </label>
                     <label>
+                        <input type="radio" name="searchType" value="mes" id="radio_mes">
+                        Por Mes/Año
+                    </label>
+                    <label>
                         <input type="radio" name="searchType" value="estado" id="radio_estado">
                         Estado de Muestra
                     </label>
@@ -33,18 +39,42 @@
                 <div class="search-inputs">
                     <input type="date" id="search_fecha" class="search-input">
                     <input type="text" id="search_cedula" class="search-input" placeholder="Cédula, pasaporte o DIMEX"
-                        disabled>
+                        style="display: none;">
                     <input type="text" id="search_nombre" class="search-input" placeholder="Ingrese nombre del cliente"
-                        disabled>
-                    <select id="search_estado" class="search-input" disabled>
+                        style="display: none;">
+
+                    <div id="mes_inputs" class="mes-group" style="display: none;">
+                        <select id="search_mes" class="search-input">
+                            <option value="">Seleccione mes...</option>
+                            <option value="1">Enero</option>
+                            <option value="2">Febrero</option>
+                            <option value="3">Marzo</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Mayo</option>
+                            <option value="6">Junio</option>
+                            <option value="7">Julio</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                        <select id="search_anio" class="search-input">
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025" selected>2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+
+                    <select id="search_estado" class="search-input" style="display: none;">
                         <option value="">Seleccione estado...</option>
                         <option value="registrada">📝 Registrada</option>
                         <option value="recibida">📦 Recibida</option>
-                        <option value="procesando">🔬 En Procesamiento</option>
                         <option value="enviada">📤 Enviada</option>
                         <option value="completada">✅ Completada</option>
                     </select>
-                    <button id="btnBuscar" type="button">Buscar</button>
+                    <button id="btnBuscar" type="button">🔍 Buscar</button>
                 </div>
             </div>
             <div id="searchMessage" class="message-area"></div>
@@ -90,6 +120,7 @@
         </div>
     </div>
     <?!= include('scriptBuscarBiopsias'); ?>
+    <?!= include('scriptBotonRegresar'); ?>
 </body>
 
 </html>

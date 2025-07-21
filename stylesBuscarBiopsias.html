@@ -1,5 +1,5 @@
 <style>
-    /* Estilos generales */
+    /* ===================== ESTILOS GENERALES ===================== */
     body {
         font-family: Arial, sans-serif;
         background: #f7f7f7;
@@ -39,22 +39,59 @@
         display: block;
     }
 
+    /* ===================== SECCIONES PRINCIPALES ===================== */
     .search-section,
     .report-section,
     .results-section {
         margin-bottom: 32px;
     }
 
+    .message-area {
+        margin: 15px 0;
+        padding: 10px;
+        border-radius: 4px;
+        font-weight: bold;
+        text-align: center;
+        display: none;
+    }
+
+    .message-area.info {
+        background-color: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+        display: block;
+    }
+
+    .message-area.success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        display: block;
+    }
+
+    .message-area.error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        display: block;
+    }
+
+    /* ===================== BÚSQUEDA Y CONTROLES ===================== */
     .radio-group {
         display: flex;
         gap: 24px;
         margin-bottom: 18px;
+        flex-wrap: wrap;
     }
 
     .radio-group label {
         font-weight: normal;
         color: #273F4F;
         margin-bottom: 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 5px;
     }
 
     .search-inputs {
@@ -63,6 +100,7 @@
         flex-wrap: wrap;
         align-items: center;
         margin-bottom: 12px;
+        margin-top: 15px;
     }
 
     .search-input {
@@ -75,34 +113,14 @@
         color: #273F4F;
     }
 
-    button,
-    .btn-primary,
-    .btn-secondary {
-        padding: 10px 18px;
-        border: none;
-        border-radius: 4px;
-        font-size: 15px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: background 0.2s;
-        margin-right: 8px;
+    .search-input[style*="display: none"] {
+        display: none !important;
     }
 
-    button,
-    .btn-primary {
-        background: #FE7743;
-        color: #fff;
-    }
-
-    .btn-secondary {
-        background: #273F4F;
-        color: #fff;
-    }
-
-    button:hover,
-    .btn-primary:hover,
-    .btn-secondary:hover {
-        opacity: 0.9;
+    .mes-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
     }
 
     .select-group {
@@ -125,45 +143,322 @@
         color: #273F4F;
     }
 
-    .results-section {
-        margin-top: 36px;
+    /* ===================== BOTONES ===================== */
+    button,
+    .btn-primary,
+    .btn-secondary {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 4px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-right: 8px;
     }
 
-    .results-container {
-        margin-top: 18px;
-        min-height: 60px;
-        background: #fafafa;
-        border-radius: 6px;
-        padding: 12px;
-        border: 1px solid #e0e0e0;
+    button,
+    .btn-primary {
+        background: #FE7743;
+        color: #fff;
     }
 
-    .action-buttons {
-        margin-top: 18px;
+    .btn-secondary {
+        background: #273F4F;
+        color: #fff;
+    }
+
+    button:hover,
+    .btn-primary:hover,
+    .btn-secondary:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }
+
+    /* Botones de acción específicos */
+    .btn-edit,
+    .btn-estado {
+        border: none;
+        background: none;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px 6px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        margin: 0;
+    }
+
+    .btn-edit:hover {
+        background-color: #e3f2fd;
+        transform: scale(1.1);
+    }
+
+    .btn-estado {
+        opacity: 0.5;
+    }
+
+    .btn-estado.activo {
+        opacity: 1;
+        background-color: #c8e6c9;
+    }
+
+    .btn-estado:hover {
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    /* ===================== TABLA DE RESULTADOS ===================== */
+    .results-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        font-size: 14px;
+    }
+
+    .results-table th,
+    .results-table td {
+        padding: 8px;
+        text-align: center;
+        border: 1px solid #ddd;
+        vertical-align: middle;
+    }
+
+    .results-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 12px;
+    }
+
+    .results-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+
+    .results-table tr:hover {
+        background-color: #e8f4fd;
+    }
+
+    /* Fila completada con color amarillo */
+    .fila-completada {
+        background-color: #fff3cd !important;
+    }
+
+    .fila-completada:hover {
+        background-color: #ffeaa7 !important;
+    }
+
+    /* ===================== ESTADOS VISUALES ===================== */
+    .estado {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: bold;
+        white-space: nowrap;
+    }
+
+    .estado.registrada {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+
+    .estado.recibida {
+        background-color: #f3e5f5;
+        color: #7b1fa2;
+    }
+
+    .estado.enviada {
+        background-color: #fff3e0;
+        color: #f57c00;
+    }
+
+    .estado.completada {
+        background-color: #e8f5e8;
+        color: #388e3c;
+    }
+
+    /* ===================== COLUMNA DE ACCIONES ===================== */
+    .acciones {
         display: flex;
-        gap: 12px;
+        gap: 4px;
+        justify-content: center;
         align-items: center;
     }
 
-    .message-area {
-        margin-top: 10px;
-        color: #FE7743;
-        font-weight: bold;
-        font-size: 15px;
+    /* ===================== MODAL DE EDICIÓN ===================== */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
     }
 
-    /* Responsive */
-    @media (max-width: 700px) {
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 0;
+        max-width: 600px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px 12px 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.2em;
+    }
+
+    .btn-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: background 0.2s ease;
+    }
+
+    .btn-close:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .modal-form {
+        padding: 25px;
+    }
+
+    .form-row {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    .form-group {
+        flex: 1;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e9ecef;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .checkbox-group {
+        display: flex;
+        gap: 20px;
+        margin-top: 5px;
+    }
+
+    .checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: normal;
+        cursor: pointer;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 15px;
+        justify-content: flex-end;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .modal-actions .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 12px 24px;
+    }
+
+    .modal-actions .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .modal-actions .btn-secondary {
+        background: #f8f9fa;
+        color: #495057;
+        border: 2px solid #dee2e6;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 12px 24px;
+    }
+
+    .modal-actions .btn-secondary:hover {
+        background: #e9ecef;
+        transform: none;
+    }
+
+    /* ===================== RESPONSIVE DESIGN ===================== */
+    @media (max-width: 768px) {
         .container {
-            padding: 12px 4px;
+            margin: 10px;
+            padding: 20px 16px;
         }
 
-        .search-inputs,
-        .select-group,
-        .action-buttons {
+        .radio-group {
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
+        }
+
+        .search-inputs {
+            flex-direction: column;
             align-items: stretch;
+        }
+
+        .search-input {
+            min-width: 100%;
+        }
+
+        .select-group {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
         }
 
         h1 {
@@ -172,6 +467,35 @@
 
         h2 {
             font-size: 18px;
+        }
+
+        /* Modal responsive */
+        .modal-content {
+            width: 95%;
+            margin: 10px;
+        }
+
+        .form-row {
+            flex-direction: column;
+            gap: 0;
+        }
+
+        .modal-actions {
+            flex-direction: column;
+        }
+
+        .modal-actions .btn-primary,
+        .modal-actions .btn-secondary {
+            width: 100%;
+        }
+
+        .results-table {
+            font-size: 12px;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 6px 4px;
         }
     }
 </style>
