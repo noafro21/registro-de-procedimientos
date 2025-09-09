@@ -6389,6 +6389,7 @@ function testComunicacion(parametros) {
   };
 }
 
+// Función de prueba directa con los mismos parámetros del frontend
 function buscarBiopsiasServidor_v3(parametros) {
   Logger.log("🚀 V3 - Parámetros recibidos:", JSON.stringify(parametros));
 
@@ -6404,21 +6405,16 @@ function buscarBiopsiasServidor_v3(parametros) {
       `🔍 V3 - Extracted: type=${type}, value=${value}, value2=${value2}`
     );
 
-    // 🔧 CORREGIDO: Usar el ID correcto del spreadsheet
+    // Probar acceso a spreadsheet
     Logger.log("🔗 V3 - Intentando acceder al spreadsheet...");
     const ss = SpreadsheetApp.openById(
-      "1X6NuCXLOMKRhGcVBFK15QwXht1CEw0NEenu9LrsydeQ" // ✅ ID CORRECTO
+      "1NjqsT9ApcCb9bpkNY2K01Z9_YRkxoSlPYD52Ku0dGS8"
     );
     Logger.log("✅ V3 - Spreadsheet obtenido correctamente");
 
-    // 🔧 CORREGIDO: Usar el nombre correcto de la hoja
-    const hoja = ss.getSheetByName("RegistroBiopsias"); // ✅ NOMBRE CORRECTO
+    const hoja = ss.getSheetByName("RegistroBiopsias");
     if (!hoja) {
       Logger.log("❌ V3 - Hoja 'RegistroBiopsias' no encontrada");
-      Logger.log("📋 V3 - Hojas disponibles:");
-      ss.getSheets().forEach((sheet) => {
-        Logger.log(`   - ${sheet.getName()}`);
-      });
       return [];
     }
     Logger.log("✅ V3 - Hoja encontrada");
@@ -6426,114 +6422,15 @@ function buscarBiopsiasServidor_v3(parametros) {
     const datos = hoja.getDataRange().getValues();
     Logger.log(`📊 V3 - Total de filas obtenidas: ${datos.length}`);
 
-    if (datos.length <= 1) {
-      Logger.log("ℹ️ V3 - No hay datos para buscar");
-      return [];
-    }
-
-    // 🔧 IMPLEMENTAR búsqueda real según el tipo
-    const resultados = [];
-
-    // Funciones auxiliares de normalización
-    const normalizarTexto = (str) =>
-      String(str || "")
-        .toLowerCase()
-        .trim();
-    const normalizarIdentificacion = (str) =>
-      String(str || "")
-        .replace(/[-\s]/g, "")
-        .toUpperCase();
-    const formatearFecha = (fecha) => {
-      if (!fecha) return "";
-      const fechaObj = new Date(fecha);
-      if (isNaN(fechaObj.getTime())) return "";
-      return fechaObj.toISOString().split("T")[0];
-    };
-
-    Logger.log(`🔍 V3 - Iniciando búsqueda tipo: ${type}`);
-
-    // Procesar cada fila (saltando encabezado)
-    for (let i = 1; i < datos.length; i++) {
-      const fila = datos[i];
-      let coincide = false;
-
-      switch (type) {
-        case "cedula":
-          const identificacionHoja = normalizarIdentificacion(fila[3]); // Columna D
-          const identificacionBusqueda = normalizarIdentificacion(value);
-          Logger.log(
-            `🆔 V3 - Comparando: "${identificacionHoja}" vs "${identificacionBusqueda}"`
-          );
-          coincide = identificacionHoja === identificacionBusqueda;
-          break;
-
-        case "nombre":
-          const nombreHoja = normalizarTexto(fila[5]); // Columna F
-          const nombreBusqueda = normalizarTexto(value);
-          Logger.log(
-            `👤 V3 - Comparando: "${nombreHoja}" incluye "${nombreBusqueda}"`
-          );
-          coincide = nombreHoja.includes(nombreBusqueda);
-          break;
-
-        case "fecha":
-          const fechaHoja = formatearFecha(fila[0]); // Columna A
-          const fechaBusqueda = value;
-          Logger.log(
-            `📅 V3 - Comparando: "${fechaHoja}" vs "${fechaBusqueda}"`
-          );
-          coincide = fechaHoja === fechaBusqueda;
-          break;
-
-        case "mes":
-          if (fila[0] && value2) {
-            const fecha = new Date(fila[0]);
-            const mesHoja = fecha.getMonth() + 1;
-            const anioHoja = fecha.getFullYear();
-            const mesBusqueda = parseInt(value);
-            const anioBusqueda = parseInt(value2);
-            Logger.log(
-              `📅 V3 - Comparando mes: ${mesHoja}/${anioHoja} vs ${mesBusqueda}/${anioBusqueda}`
-            );
-            coincide = mesHoja === mesBusqueda && anioHoja === anioBusqueda;
-          }
-          break;
-
-        case "estado":
-          // Determinar estado basado en checkboxes
-          let estadoMuestra = "registrada";
-          const recibida = Boolean(fila[1]); // Columna B
-          const enviada = Boolean(fila[2]); // Columna C
-
-          if (recibida && enviada) {
-            estadoMuestra = "completada";
-          } else if (enviada) {
-            estadoMuestra = "enviada";
-          } else if (recibida) {
-            estadoMuestra = "recibida";
-          }
-
-          Logger.log(
-            `📋 V3 - Estado calculado: "${estadoMuestra}" vs buscado: "${value}"`
-          );
-          coincide = estadoMuestra === value;
-          break;
-
-        default:
-          Logger.log(`⚠️ V3 - Tipo de búsqueda no reconocido: ${type}`);
-          break;
-      }
-
-      if (coincide) {
-        // Agregar número de fila al final para edición posterior
-        const filaConIndice = [...fila, i + 1];
-        resultados.push(filaConIndice);
-        Logger.log(`✅ V3 - Coincidencia encontrada en fila ${i + 1}`);
-      }
-    }
-
-    Logger.log(`🎯 V3 - Resultados encontrados: ${resultados.length}`);
-    return resultados;
+    // Devolver info básica para verificar
+    return [
+      {
+        debug: true,
+        totalFilas: datos.length,
+        parametros: parametros,
+        primeraFila: datos.length > 1 ? datos[1] : null,
+      },
+    ];
   } catch (error) {
     Logger.log("❌ V3 - Error:", error.toString());
     return [
