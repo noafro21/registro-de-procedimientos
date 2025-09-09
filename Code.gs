@@ -611,7 +611,7 @@ function generarPdfParaDescarga(
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
           font-family: Arial, sans-serif; 
-          font-size: 10px; 
+          font-size: 16px; 
           line-height: 1.3; 
           color: #333; 
           background: white; 
@@ -622,7 +622,7 @@ function generarPdfParaDescarga(
           width: 100%; 
           border-collapse: collapse; 
           margin: 8px 0; 
-          font-size: 9px; 
+          font-size: 14px; 
         }
         th, td { 
           border: 1px solid #ddd; 
@@ -634,7 +634,7 @@ function generarPdfParaDescarga(
         th { 
           background-color: #f5f5f5; 
           font-weight: bold; 
-          font-size: 8px; 
+          font-size: 14px; 
           text-align: center; 
         }
         h1, h2, h3 { 
@@ -643,17 +643,17 @@ function generarPdfParaDescarga(
           page-break-after: avoid; 
         }
         h2 { 
-          font-size: 14px; 
+          font-size: 24px; 
           border-bottom: 2px solid #FE7743; 
           padding-bottom: 3px; 
           text-align: center; 
         }
         h3 { 
-          font-size: 12px; 
+          font-size: 18px; 
           color: #FE7743; 
         }
-        .tabla-detalle { font-size: 8px; }
-        .tabla-detalle th { padding: 3px 2px; font-size: 7px; }
+        .tabla-detalle { font-size: 14px; }
+        .tabla-detalle th { padding: 3px 2px; font-size: 14px; }
         .tabla-detalle td { padding: 3px 2px; }
         .resumen-totales { 
           background-color: #f8f9fa; 
@@ -673,9 +673,9 @@ function generarPdfParaDescarga(
           color: #666; 
         }
         @media print {
-          body { font-size: 20px; padding: 10px; }
-          table { font-size: 8px; }
-          th, td { padding: 2px 1px; font-size: 7px; }
+          body { font-size: 16px; padding: 10px; }
+          table { font-size: 14px; }
+          th, td { padding: 2px 1px; font-size: 14px; }
         }
       </style>
     `;
@@ -800,12 +800,12 @@ function generarPdfComprimido(htmlContent, fileName, pageTitle) {
         <meta charset="UTF-8">
         <title>${pageTitle}</title>
         <style>
-          body { font-family: Arial; font-size: 9px; margin: 10px; }
-          table { width: 100%; border-collapse: collapse; margin: 5px 0; font-size: 8px; }
+          body { font-family: Arial; font-size: 16px; margin: 10px; }
+          table { width: 100%; border-collapse: collapse; margin: 5px 0; font-size: 14px; }
           th, td { border: 1px solid #ddd; padding: 2px; }
           th { background: #f0f0f0; font-weight: bold; text-align: center; }
-          h2 { font-size: 12px; color: #333; text-align: center; margin: 8px 0; }
-          h3 { font-size: 10px; margin: 5px 0; }
+          h2 { font-size: 24px; color: #333; text-align: center; margin: 8px 0; }
+          h3 { font-size: 18px; margin: 5px 0; }
           .currency { text-align: right; font-weight: bold; }
         </style>
       </head>
