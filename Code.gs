@@ -5797,7 +5797,6 @@ function obtenerDatosBiopsia(fila) {
 
 // --- RESTO DE FUNCIONES (sin cambios mayores, pero incluidas para integridad) ---
 
-// Función de prueba directa con los mismos parámetros del frontend
 function buscarBiopsiasServidor_v3(parametros) {
   try {
     const { type, value, value2, page = 1, pageSize = 10 } = parametros;
@@ -5853,42 +5852,7 @@ function buscarBiopsiasServidor_v3(parametros) {
         const numeroDeFilaOriginal = indiceOriginal !== -1 ? indiceOriginal + 1 : -1;
         datosPaginados.push([...filaProcesada, numeroDeFilaOriginal]);
     }
-<<<<<<< HEAD
-
-    const { type, value, value2 } = parametros;
-    Logger.log(
-      `🔍 V3 - Extracted: type=${type}, value=${value}, value2=${value2}`
-    );
-
-    // Probar acceso a spreadsheet
-    Logger.log("🔗 V3 - Intentando acceder al spreadsheet...");
-    const ss = SpreadsheetApp.openById(
-      "1NjqsT9ApcCb9bpkNY2K01Z9_YRkxoSlPYD52Ku0dGS8"
-    );
-    Logger.log("✅ V3 - Spreadsheet obtenido correctamente");
-
-    const hoja = ss.getSheetByName("RegistroBiopsias");
-    if (!hoja) {
-      Logger.log("❌ V3 - Hoja 'RegistroBiopsias' no encontrada");
-      return [];
-    }
-    Logger.log("✅ V3 - Hoja encontrada");
-
-    const datos = hoja.getDataRange().getValues();
-    Logger.log(`📊 V3 - Total de filas obtenidas: ${datos.length}`);
-
-    // Devolver info básica para verificar
-    return [
-      {
-        debug: true,
-        totalFilas: datos.length,
-        parametros: parametros,
-        primeraFila: datos.length > 1 ? datos[1] : null,
-      },
-    ];
-=======
     return { data: datosPaginados, total: totalResults };
->>>>>>> f8fa31e10e09eaf6f4d497e4bda31a920d2a03aa
   } catch (error) {
     Logger.log(`ERROR en buscarBiopsias: ${error.toString()}`);
     return { data: [], total: 0, error: true, mensaje: `Error en el servidor: ${error.message}` };
