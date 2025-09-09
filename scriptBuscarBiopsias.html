@@ -1,512 +1,368 @@
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    // Listeners para radio buttons
-    document.querySelectorAll('input[name="searchType"]').forEach(radio => {
-      radio.addEventListener('change', toggleSearchInputs);
-    });
-    toggleSearchInputs();
+    /*=============== SCRIPT COMPLETO Y CORREGIDO V3 =====================
+    ================================================================================
+    Correcciones:
+    - Se ha mejorado la asignación de eventos para el botón de editar (lápiz).
+    - Se ha reforzado la lógica de paginación para que se actualice correctamente.
+    - Se ha unificado la lógica de reporte mensual con la búsqueda principal.
+    ================================================================================*/
+    document.addEventListener('DOMContentLoaded', function () {
+        //-----------------------------------------
+        //  1. REFERENCIAS A ELEMENTOS DEL DOM
+        //-----------------------------------------
+        const searchTypeRadios = document.querySelectorAll('input[name="searchType"]');
+        const searchInputs = {
+            fecha: document.getElementById('search_fecha'),
+            cedula: document.getElementById('search_cedula'),
+            nombre: document.getElementById('search_nombre'),
+            mes: document.getElementById('mes_inputs'),
+            estado: document.getElementById('search_estado')
+        };
+        const btnBuscar = document.getElementById('btnBuscar');
+        const searchMessage = document.getElementById('searchMessage');
+        const btnReporteMensual = document.getElementById('btnReporteMensual');
+        const reportMes = document.getElementById('reportMes');
+        const reportAnio = document.getElementById('reportAnio');
+        const btnDescargarPDF = document.getElementById('btnDescargarPDF');
+        const emailMessage = document.getElementById('emailMessage');
 
-    // Botón buscar
-    document.getElementById('btnBuscar')?.addEventListener('click', buscarBiopsiasUI);
+        //-----------------------------------------
+        //  2. VARIABLES GLOBALES
+        //-----------------------------------------
+        let currentPage = 1;
+        let itemsPerPage = 10;
+        let totalResults = 0;
+        let lastSearchParams = null;
 
-    // Botón reporte mensual
-    document.getElementById('btnReporteMensual')?.addEventListener('click', mostrarBiopsiasPorMesAnio);
+        //-----------------------------------------
+        //  3. CONFIGURACIÓN INICIAL
+        //-----------------------------------------
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        searchInputs.fecha.value = `${yyyy}-${mm}-${dd}`;
+        document.getElementById('reportAnio').value = yyyy;
 
-    // Botón descargar PDF
-    document.getElementById('btnDescargarPDF')?.addEventListener('click', descargarReporteBiopsiasPDF);
+        //-----------------------------------------
+        //  4. FUNCIONES AUXILIARES
+        //-----------------------------------------
+        function showLoadingOverlay() { document.getElementById('loadingOverlay').style.display = 'flex'; }
+        function hideLoadingOverlay() { document.getElementById('loadingOverlay').style.display = 'none'; }
 
-    // Fecha actual por defecto
-    const fechaInput = document.getElementById('search_fecha');
-    if (fechaInput) {
-      const today = new Date();
-      fechaInput.value = today.toISOString().slice(0, 10);
-    }
-
-    // Año actual por defecto
-    const yearSelect = document.getElementById('reportAnio');
-    if (yearSelect) {
-      const currentYear = new Date().getFullYear();
-      for (let i = 0; i < yearSelect.options.length; i++) {
-        if (parseInt(yearSelect.options[i].value) === currentYear) {
-          yearSelect.selectedIndex = i;
-          break;
+        function mostrarMensajeBusqueda(mensaje, tipo) {
+            searchMessage.textContent = mensaje;
+            searchMessage.className = `message-area ${tipo}`;
+            searchMessage.style.display = 'block';
         }
-      }
-    }
-  });
 
-  function toggleSearchInputs() {
-    const type = document.querySelector('input[name="searchType"]:checked')?.value;
-
-    // Limpiar todos los inputs
-    document.getElementById('search_fecha').value = '';
-    document.getElementById('search_cedula').value = '';
-    document.getElementById('search_nombre').value = '';
-    document.getElementById('search_estado').value = '';
-    document.getElementById('search_mes').value = '';
-    document.getElementById('search_anio').value = '2025';
-
-    // Mostrar/ocultar elementos según el tipo
-    document.getElementById('search_fecha').style.display = type === 'fecha' ? 'block' : 'none';
-    document.getElementById('search_cedula').style.display = type === 'cedula' ? 'block' : 'none';
-    document.getElementById('search_nombre').style.display = type === 'nombre' ? 'block' : 'none';
-    document.getElementById('search_estado').style.display = type === 'estado' ? 'block' : 'none';
-
-    // Mostrar/ocultar grupo de mes
-    const mesGroup = document.getElementById('mes_inputs');
-    if (mesGroup) {
-      mesGroup.style.display = type === 'mes' ? 'flex' : 'none';
-    }
-
-    // Establecer fecha actual por defecto si es búsqueda por fecha
-    if (type === 'fecha') {
-      const today = new Date();
-      document.getElementById('search_fecha').value = today.toISOString().slice(0, 10);
-    }
-  }
-
-  function buscarBiopsiasUI() {
-    const type = document.querySelector('input[name="searchType"]:checked')?.value;
-
-    if (!type) {
-      mostrarMensajeBusqueda("Seleccione un tipo de búsqueda", "error");
-      return;
-    }
-
-    let value = '';
-    let value2 = null;
-
-    console.log('🔍 Tipo de búsqueda seleccionado:', type);
-
-    if (type === 'fecha') {
-      const fechaElement = document.getElementById('search_fecha');
-      value = fechaElement?.value;
-      console.log('📅 Valor fecha:', value);
-    } else if (type === 'cedula') {
-      const cedulaElement = document.getElementById('search_cedula');
-      const rawValue = cedulaElement?.value?.trim();
-      value = rawValue ? rawValue.replace(/[-\s]/g, '').toUpperCase() : '';
-      console.log('🆔 Valor cédula:', value);
-    } else if (type === 'nombre') {
-      const nombreElement = document.getElementById('search_nombre');
-      value = nombreElement?.value?.trim();
-      console.log('👤 Valor nombre:', value);
-    } else if (type === 'mes') {
-      const mesElement = document.getElementById('search_mes');
-      const anioElement = document.getElementById('search_anio');
-      value = mesElement?.value;
-      value2 = anioElement?.value;
-      console.log('📆 Valor mes:', value, 'año:', value2);
-
-      if (!value || !value2) {
-        mostrarMensajeBusqueda("Seleccione mes y año", "error");
-        return;
-      }
-    } else if (type === 'estado') {
-      const estadoElement = document.getElementById('search_estado');
-      value = estadoElement?.value;
-      console.log('📊 Valor estado:', value);
-    }
-
-    if (!value) {
-      mostrarMensajeBusqueda("Ingrese un valor de búsqueda", "error");
-      return;
-    }
-
-    console.log('🚀 Ejecutando búsqueda con:', { type, value, value2 });
-    console.log('🚀 Tipos de datos:', {
-      typeType: typeof type,
-      valueType: typeof value,
-      value2Type: typeof value2
-    });
-    mostrarMensajeBusqueda("Buscando...", "info");
-
-    // Asegurar que los parámetros sean strings válidos
-    const finalType = String(type || '');
-    const finalValue = String(value || '');
-    const finalValue2 = value2 ? String(value2) : null;
-
-    console.log('🚀 Parámetros finales:', { finalType, finalValue, finalValue2 });
-
-    google.script.run
-      .withSuccessHandler(function (resultados) {
-        console.log('✅ Búsqueda exitosa, resultados:', resultados);
-        mostrarResultadosBiopsias(resultados);
-      })
-      .withFailureHandler(function (error) {
-        console.error('❌ Error en búsqueda:', error);
-        mostrarMensajeBusqueda("Error en la búsqueda: " + error.message, "error");
-      })
-      .buscarBiopsiasServidor_v3({
-        type: finalType,
-        value: finalValue,
-        value2: finalValue2
-      });
-  }
-
-  function mostrarResultadosBiopsias(resultados) {
-    const cont = document.getElementById("resultado_busqueda");
-    if (!Array.isArray(resultados) || resultados.length === 0) {
-      mostrarMensajeBusqueda("No se encontraron resultados.", "info");
-      cont.innerHTML = "";
-      return;
-    }
-
-    let html = `<table class="results-table">
-    <thead>
-      <tr>
-        <th>Fecha Toma</th>
-        <th>Estado</th>
-        <th>Cédula</th>
-        <th>Teléfono</th>
-        <th>Nombre Cliente</th>
-        <th>Frascos G</th>
-        <th>Frascos C</th>
-        <th>Médico</th>
-        <th>Comentario</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>`;
-
-    resultados.forEach(row => {
-      const fila = row[10]; // Número de fila (último elemento)
-      const recibida = Boolean(row[1]);
-      const enviada = Boolean(row[2]);
-
-      // Determinar estado visual
-      let estadoHtml = '';
-      if (recibida && enviada) {
-        estadoHtml = '<span class="estado completada">✅ Completada</span>';
-      } else if (enviada) {
-        estadoHtml = '<span class="estado enviada">📤 Enviada</span>';
-      } else if (recibida) {
-        estadoHtml = '<span class="estado recibida">📦 Recibida</span>';
-      } else {
-        estadoHtml = '<span class="estado registrada">📝 Registrada</span>';
-      }
-
-      let fechaToma = '';
-      try {
-        fechaToma = new Date(row[0]).toLocaleDateString('es-CR');
-      } catch {
-        fechaToma = row[0] || '';
-      }
-
-      // Clase para fila completada
-      const filaClass = (recibida && enviada) ? 'fila-completada' : '';
-
-      html += `<tr class="${filaClass}" data-fila="${fila}">
-        <td>${fechaToma}</td>
-        <td>${estadoHtml}</td>
-        <td>${row[3] || ''}</td>
-        <td>${row[4] || ''}</td>
-        <td style="text-align:left;">${row[5] || ''}</td>
-        <td>${row[6] || 0}</td>
-        <td>${row[7] || 0}</td>
-        <td style="text-align:left;">${row[8] || ''}</td>
-        <td style="text-align:left; max-width: 150px; overflow: hidden;" title="${row[9] || ''}">${(row[9] || '').substring(0, 30)}${(row[9] || '').length > 30 ? '...' : ''}</td>
-        <td class="acciones">
-          <button onclick="editarRegistro(${fila})" class="btn-edit" title="Editar registro">✏️</button>
-          <button onclick="toggleEstado(${fila}, 'recibida', ${!recibida})" class="btn-estado ${recibida ? 'activo' : ''}" title="Marcar como recibida">📦</button>
-          <button onclick="toggleEstado(${fila}, 'enviada', ${!enviada})" class="btn-estado ${enviada ? 'activo' : ''}" title="Marcar como enviada">📤</button>
-        </td>
-      </tr>`;
-    });
-
-    html += '</tbody></table>';
-    cont.innerHTML = html;
-    mostrarMensajeBusqueda(`Se encontraron ${resultados.length} resultado(s).`, "success");
-  }
-
-  function mostrarBiopsiasPorMesAnio() {
-    const mes = parseInt(document.getElementById('reportMes').value);
-    const anio = parseInt(document.getElementById('reportAnio').value);
-    if (isNaN(mes) || isNaN(anio)) {
-      mostrarMensajeBusqueda("Por favor, seleccione un mes y un año válidos.", "error");
-      return;
-    }
-    mostrarMensajeBusqueda(`Generando reporte para ${mes}/${anio}...`, "info");
-    document.getElementById('resultado_busqueda').innerHTML = '';
-    google.script.run
-      .withSuccessHandler(function (data) {
-        if (!data || data.length === 0) {
-          mostrarMensajeBusqueda(`No se encontraron biopsias para ${mes}/${anio}.`, "info");
-          document.getElementById('action-section').style.display = 'none';
-          return;
-        }
-        const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-        document.getElementById('reportTitle').textContent = `Reporte de Biopsias - ${monthNames[mes - 1]} ${anio}`;
-        let html = `<table>
-        <thead>
-          <tr>
-            <th>Fecha Toma</th>
-            <th>Recibida</th>
-            <th>Enviada</th>
-            <th>Cédula</th>
-            <th>Teléfono</th>
-            <th>Nombre Cliente</th>
-            <th>Frascos Gastro</th>
-            <th>Frascos Colon</th>
-            <th>Médico</th>
-            <th>Comentario</th>
-          </tr>
-        </thead>
-        <tbody>`;
-        data.forEach(row => {
-          let fechaToma = '';
-          try { fechaToma = new Date(row[0]).toLocaleDateString('es-CR'); } catch { fechaToma = row[0] || ''; }
-          html += `<tr>
-          <td>${fechaToma}</td>
-          <td>${row[1] ? 'Sí' : 'No'}</td>
-          <td>${row[2] ? 'Sí' : 'No'}</td>
-          <td>${row[3] || ''}</td>
-          <td>${row[4] || ''}</td>
-          <td style="text-align:left;">${row[5] || ''}</td>
-          <td>${row[6] || 0}</td>
-          <td>${row[7] || 0}</td>
-          <td style="text-align:left;">${row[8] || ''}</td>
-          <td style="text-align:left;">${row[9] || ''}</td>
-        </tr>`;
+        //-----------------------------------------
+        //  5. LÓGICA DE BÚSQUEDA
+        //-----------------------------------------
+        searchTypeRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                Object.values(searchInputs).forEach(input => input.style.display = 'none');
+                const selectedType = this.value;
+                if (searchInputs[selectedType]) {
+                    searchInputs[selectedType].style.display = '';
+                    if (selectedType === 'mes') searchInputs.mes.style.display = 'flex';
+                }
+                document.getElementById('resultado_busqueda').innerHTML = '';
+                document.getElementById('paginationControls').style.display = 'none';
+                document.getElementById('action-section').style.display = 'none';
+            });
         });
-        html += '</tbody></table>';
-        document.getElementById('resultado_busqueda').innerHTML = html;
-        document.getElementById('action-section').style.display = 'block';
-        document.getElementById('emailMessage').textContent = '';
-        mostrarMensajeBusqueda("Reporte generado con éxito.", "success");
-      })
-      .withFailureHandler(function (error) {
-        mostrarMensajeBusqueda("Error al generar reporte: " + error.message, "error");
-        document.getElementById('action-section').style.display = 'none';
-      })
-      .obtenerBiopsiasPorMesAnio(mes, anio);
-  }
 
-  function mostrarMensajeBusqueda(mensaje, tipo) {
-    const mensajeDiv = document.getElementById('searchMessage');
-    if (!mensajeDiv) return;
-    mensajeDiv.textContent = mensaje;
-    mensajeDiv.className = 'message-area ' + tipo;
-    if (tipo !== 'error') {
-      setTimeout(() => {
-        mensajeDiv.textContent = '';
-        mensajeDiv.className = 'message-area';
-      }, 5000);
-    }
-  }
+        btnBuscar.addEventListener('click', function () {
+            const selectedType = document.querySelector('input[name="searchType"]:checked').value;
+            let value = '', value2 = null;
 
-  function descargarReporteBiopsiasPDF() {
-    // Implementa aquí la lógica de descarga PDF si la tienes
-  }
+            if (selectedType === 'fecha') value = searchInputs.fecha.value;
+            else if (selectedType === 'cedula') value = searchInputs.cedula.value;
+            else if (selectedType === 'nombre') value = searchInputs.nombre.value;
+            else if (selectedType === 'mes') {
+                value = document.getElementById('search_mes').value;
+                value2 = document.getElementById('reportAnio').value;
+            } else if (selectedType === 'estado') value = searchInputs.estado.value;
 
-  // =================== FUNCIONES DE EDICIÓN ===================
+            if (!value) {
+                mostrarMensajeBusqueda("Por favor, ingrese un valor de búsqueda.", "error");
+                return;
+            }
+            lastSearchParams = { type: selectedType, value, value2 };
+            currentPage = 1;
+            performSearchWithPagination();
+        });
 
-  function toggleEstado(fila, tipo, nuevoEstado) {
-    console.log(`🔄 Cambiando estado: fila=${fila}, tipo=${tipo}, estado=${nuevoEstado}`);
+        function performSearchWithPagination() {
+            if (!lastSearchParams) return;
+            showLoadingOverlay();
+            mostrarMensajeBusqueda("Buscando...", "info");
 
-    // Obtener estados actuales de la fila
-    const filaElement = document.querySelector(`tr[data-fila="${fila}"]`);
-    if (!filaElement) {
-      mostrarMensajeBusqueda("Error: No se encontró la fila", "error");
-      return;
-    }
-
-    // Determinar estados finales
-    let recibida = filaElement.querySelector('.btn-estado:nth-child(2)').classList.contains('activo');
-    let enviada = filaElement.querySelector('.btn-estado:nth-child(3)').classList.contains('activo');
-
-    if (tipo === 'recibida') {
-      recibida = nuevoEstado;
-    } else if (tipo === 'enviada') {
-      enviada = nuevoEstado;
-    }
-
-    mostrarMensajeBusqueda("Actualizando estado...", "info");
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('✅ Estado actualizado:', resultado);
-        mostrarMensajeBusqueda("Estado actualizado correctamente", "success");
-
-        // Actualizar UI
-        const btnRecibida = filaElement.querySelector('.btn-estado:nth-child(2)');
-        const btnEnviada = filaElement.querySelector('.btn-estado:nth-child(3)');
-
-        if (recibida) {
-          btnRecibida.classList.add('activo');
-          btnRecibida.onclick = () => toggleEstado(fila, 'recibida', false);
-        } else {
-          btnRecibida.classList.remove('activo');
-          btnRecibida.onclick = () => toggleEstado(fila, 'recibida', true);
+            google.script.run
+                .withSuccessHandler(function (response) {
+                    hideLoadingOverlay();
+                    console.log("Respuesta del servidor:", response); // Log para depuración
+                    if (!response || typeof response.total === 'undefined' || !Array.isArray(response.data)) {
+                        mostrarMensajeBusqueda("El servidor devolvió un formato de datos incorrecto.", "error");
+                        totalResults = 0; // Asegurarse de que el total sea 0
+                        updatePaginationControls();
+                        return;
+                    }
+                    totalResults = response.total;
+                    console.log("Total de resultados:", totalResults); // Log para depuración
+                    mostrarResultadosBiopsias(response.data);
+                    updatePaginationControls();
+                })
+                .withFailureHandler(function (error) {
+                    hideLoadingOverlay();
+                    mostrarMensajeBusqueda("Error en la búsqueda: " + error.message, "error");
+                    totalResults = 0; // Asegurarse de que el total sea 0
+                    updatePaginationControls();
+                })
+                .buscarBiopsiasServidor_v3({ ...lastSearchParams, page: currentPage, pageSize: itemsPerPage });
         }
 
-        if (enviada) {
-          btnEnviada.classList.add('activo');
-          btnEnviada.onclick = () => toggleEstado(fila, 'enviada', false);
-        } else {
-          btnEnviada.classList.remove('activo');
-          btnEnviada.onclick = () => toggleEstado(fila, 'enviada', true);
+        function mostrarResultadosBiopsias(resultados) {
+            const cont = document.getElementById("resultado_busqueda");
+            document.getElementById('action-section').style.display = 'none';
+
+            if (resultados.length === 0) {
+                mostrarMensajeBusqueda("No se encontraron resultados.", "info");
+                cont.innerHTML = "";
+                return;
+            }
+
+            let html = `<table class="results-table"><thead><tr>
+                <th>Fecha Toma</th><th>Recibida</th><th>Enviada</th><th>Cédula</th><th>Teléfono</th>
+                <th>Nombre Cliente</th><th>Gastro</th><th>Colon</th><th>Médico</th><th>Acciones</th>
+                </tr></thead><tbody>`;
+
+            resultados.forEach(function (row) {
+                const [fechaToma, recibida, enviada, cedula, telefono, nombreCliente, frascosGastro, frascosColon, medico, , rowNumber] = row;
+                const rowClass = recibida && enviada ? 'fila-completada' : '';
+
+                html += `<tr class="${rowClass}">
+                    <td>${fechaToma}</td>
+                    <td><input type="checkbox" data-row="${rowNumber}" data-estado="recibida" ${recibida ? 'checked' : ''} class="toggle-estado"></td>
+                    <td><input type="checkbox" data-row="${rowNumber}" data-estado="enviada" ${enviada ? 'checked' : ''} class="toggle-estado"></td>
+                    <td>${cedula || ''}</td><td>${telefono || ''}</td><td>${nombreCliente || ''}</td>
+                    <td>${frascosGastro || 0}</td><td>${frascosColon || 0}</td><td>${medico || ''}</td>
+                    <td><button class="btn-edit" data-row="${rowNumber}">✏️</button></td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            cont.innerHTML = html;
+            mostrarMensajeBusqueda(`Mostrando ${resultados.length} de ${totalResults} resultado(s).`, "success");
+            
+            if (lastSearchParams && lastSearchParams.type === 'mes') {
+                document.getElementById('action-section').style.display = 'flex';
+            }
+            
+            // Asignación de eventos robusta
+            cont.querySelectorAll('.btn-edit').forEach(button => {
+                button.addEventListener('click', function() {
+                    editarRegistro(parseInt(this.dataset.row));
+                });
+            });
+            cont.querySelectorAll('.toggle-estado').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const row = parseInt(this.dataset.row);
+                    const isRecibida = document.querySelector(`input[data-row="${row}"][data-estado="recibida"]`).checked;
+                    const isEnviada = document.querySelector(`input[data-row="${row}"][data-estado="enviada"]`).checked;
+                    toggleEstado(row, isRecibida, isEnviada);
+                });
+            });
         }
 
-        // Actualizar estado visual
-        let estadoHtml = '';
-        if (recibida && enviada) {
-          estadoHtml = '<span class="estado completada">✅ Completada</span>';
-          filaElement.classList.add('fila-completada');
-        } else if (enviada) {
-          estadoHtml = '<span class="estado enviada">📤 Enviada</span>';
-          filaElement.classList.remove('fila-completada');
-        } else if (recibida) {
-          estadoHtml = '<span class="estado recibida">📦 Recibida</span>';
-          filaElement.classList.remove('fila-completada');
-        } else {
-          estadoHtml = '<span class="estado registrada">📝 Registrada</span>';
-          filaElement.classList.remove('fila-completada');
+        //-----------------------------------------
+        //  6. LÓGICA DE PAGINACIÓN (REFORZADA)
+        //-----------------------------------------
+        function updatePaginationControls() {
+            const totalPages = Math.ceil(totalResults / itemsPerPage) || 1; // Si es 0, que sea 1
+            const hasResults = totalResults > 0;
+            document.getElementById('paginationControls').style.display = hasResults ? 'flex' : 'none';
+            if (!hasResults) return;
+
+            document.getElementById('pageInfo').textContent = `Página ${currentPage} de ${totalPages}`;
+            document.getElementById('prevPage').disabled = (currentPage === 1);
+            document.getElementById('nextPage').disabled = (currentPage >= totalPages);
+        }
+        document.getElementById('prevPage').addEventListener('click', () => { if(currentPage > 1) { currentPage--; performSearchWithPagination(); }});
+        document.getElementById('nextPage').addEventListener('click', () => { if(currentPage < Math.ceil(totalResults / itemsPerPage)) { currentPage++; performSearchWithPagination(); }});
+        document.getElementById('pageSize').addEventListener('change', (e) => {
+            itemsPerPage = parseInt(e.target.value);
+            currentPage = 1;
+            if(lastSearchParams) performSearchWithPagination();
+        });
+
+        //-----------------------------------------
+        //  7. LÓGICA DE EDICIÓN Y GUARDADO
+        //-----------------------------------------
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'modal-overlay';
+        modalOverlay.style.display = 'none';
+        document.body.appendChild(modalOverlay);
+
+        function toggleEstado(fila, recibida, enviada) {
+            showLoadingOverlay();
+            google.script.run
+                .withSuccessHandler(() => {
+                    hideLoadingOverlay();
+                    if (lastSearchParams) performSearchWithPagination();
+                })
+                .withFailureHandler(error => {
+                    hideLoadingOverlay();
+                    alert("Error al actualizar estado: " + error.message);
+                })
+                .actualizarEstadosBiopsia(fila, recibida, enviada);
         }
 
-        filaElement.cells[1].innerHTML = estadoHtml;
-      })
-      .withFailureHandler(function (error) {
-        console.error('❌ Error actualizando estado:', error);
-        mostrarMensajeBusqueda("Error al actualizar estado: " + error.message, "error");
-      })
-      .actualizarEstadosBiopsia(fila, recibida, enviada);
-  }
+        function editarRegistro(fila) {
+            showLoadingOverlay();
+            google.script.run
+                .withSuccessHandler(datos => {
+                    hideLoadingOverlay();
+                    mostrarModalEdicion(datos);
+                })
+                .withFailureHandler(error => {
+                    hideLoadingOverlay();
+                    alert("Error al cargar datos para editar: " + error.message);
+                })
+                .obtenerDatosBiopsia(fila);
+        }
 
-  function editarRegistro(fila) {
-    console.log(`✏️ Editando registro de fila: ${fila}`);
+        function mostrarModalEdicion(datos) {
+            let fechaFormateada = '';
+            if (datos.fecha_toma) {
+                const fechaObj = new Date(datos.fecha_toma);
+                if (!isNaN(fechaObj.getTime())) {
+                    fechaObj.setMinutes(fechaObj.getMinutes() + fechaObj.getTimezoneOffset());
+                    fechaFormateada = fechaObj.toISOString().split('T')[0];
+                }
+            }
 
-    // Obtener datos actuales
-    google.script.run
-      .withSuccessHandler(function (datos) {
-        mostrarModalEdicion(datos);
-      })
-      .withFailureHandler(function (error) {
-        mostrarMensajeBusqueda("Error al cargar datos: " + error.message, "error");
-      })
-      .obtenerDatosBiopsia(fila);
-  }
+            modalOverlay.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header"><h3>Editar Registro (Fila: ${datos.fila})</h3><button class="btn-close" onclick="cerrarModal()">✖</button></div>
+                    <div class="modal-form">
+                        <input type="hidden" id="edit_fila" value="${datos.fila}">
+                        <div class="form-row">
+                            <div class="form-group"><label>Fecha:</label><input type="date" id="edit_fecha" value="${fechaFormateada}"></div>
+                            <div class="form-group"><label>Cédula:</label><input type="text" id="edit_cedula" value="${datos.cedula || ''}"></div>
+                        </div>
+                        <div class="form-row">
+                             <div class="form-group"><label>Teléfono:</label><input type="text" id="edit_telefono" value="${datos.telefono || ''}"></div>
+                             <div class="form-group"><label>Nombre:</label><input type="text" id="edit_nombre" value="${datos.nombre_cliente || ''}"></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>Gastro:</label><input type="number" id="edit_gastro" value="${datos.frascos_gastro || 0}" min="0"></div>
+                            <div class="form-group"><label>Colon:</label><input type="number" id="edit_colon" value="${datos.frascos_colon || 0}" min="0"></div>
+                        </div>
+                        <div class="form-group"><label>Médico:</label><input type="text" id="edit_medico" value="${datos.medico || ''}"></div>
+                        <div class="form-group"><label>Comentario:</label><textarea id="edit_comentario" rows="3">${datos.comentario || ''}</textarea></div>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" id="edit_recibida" ${datos.recibida ? 'checked' : ''}> Recibida</label>
+                            <label><input type="checkbox" id="edit_enviada" ${datos.enviada ? 'checked' : ''}> Enviada</label>
+                        </div>
+                        <div class="modal-actions">
+                            <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                            <button class="btn-primary" id="btnGuardarCambios">Guardar Cambios</button>
+                        </div>
+                    </div>
+                </div>`;
+            modalOverlay.style.display = 'flex';
+            document.getElementById('btnGuardarCambios').addEventListener('click', guardarCambios);
+        }
 
-  function mostrarModalEdicion(datos) {
-    // Crear modal de edición
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>✏️ Editar Registro de Biopsia</h3>
-          <button onclick="cerrarModal()" class="btn-close">✖</button>
-        </div>
-        <form id="editForm" class="modal-form">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Fecha de Toma *</label>
-              <input type="date" id="edit_fecha" value="${datos.fecha_toma instanceof Date ? datos.fecha_toma.toISOString().split('T')[0] : datos.fecha_toma}" required>
-            </div>
-            <div class="form-group">
-              <label>Cédula/ID</label>
-              <input type="text" id="edit_cedula" value="${datos.cedula}" maxlength="18">
-            </div>
-          </div>
-          
-          <div class="form-row">
-            <div class="form-group">
-              <label>Teléfono</label>
-              <input type="tel" id="edit_telefono" value="${datos.telefono}" maxlength="12">
-            </div>
-            <div class="form-group">
-              <label>Nombre del Cliente *</label>
-              <input type="text" id="edit_nombre" value="${datos.nombre_cliente}" required>
-            </div>
-          </div>
+        window.cerrarModal = function () {
+            modalOverlay.style.display = 'none';
+            modalOverlay.innerHTML = '';
+        };
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Frascos Gastro</label>
-              <input type="number" id="edit_gastro" value="${datos.frascos_gastro}" min="0" max="20">
-            </div>
-            <div class="form-group">
-              <label>Frascos Colon</label>
-              <input type="number" id="edit_colon" value="${datos.frascos_colon}" min="0" max="20">
-            </div>
-          </div>
+        function guardarCambios() {
+            const datosActualizados = {
+                fecha_toma: document.getElementById('edit_fecha').value,
+                cedula: document.getElementById('edit_cedula').value,
+                telefono: document.getElementById('edit_telefono').value,
+                nombre_cliente: document.getElementById('edit_nombre').value,
+                frascos_gastro: parseInt(document.getElementById('edit_gastro').value) || 0,
+                frascos_colon: parseInt(document.getElementById('edit_colon').value) || 0,
+                medico: document.getElementById('edit_medico').value,
+                recibida: document.getElementById('edit_recibida').checked,
+                enviada: document.getElementById('edit_enviada').checked,
+                comentario: document.getElementById('edit_comentario').value
+            };
+            const fila = parseInt(document.getElementById('edit_fila').value);
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Médico *</label>
-              <input type="text" id="edit_medico" value="${datos.medico}" required>
-            </div>
-          </div>
+            if (!confirm('¿Está seguro de que desea guardar los cambios?')) return;
 
-          <div class="form-group">
-            <label>Estados</label>
-            <div class="checkbox-group">
-              <label><input type="checkbox" id="edit_recibida" ${datos.recibida ? 'checked' : ''}> 📦 Recibida</label>
-              <label><input type="checkbox" id="edit_enviada" ${datos.enviada ? 'checked' : ''}> 📤 Enviada</label>
-            </div>
-          </div>
+            showLoadingOverlay();
+            google.script.run
+                .withSuccessHandler(() => {
+                    hideLoadingOverlay();
+                    cerrarModal();
+                    mostrarMensajeBusqueda("Registro actualizado correctamente.", "success");
+                    if (lastSearchParams) performSearchWithPagination();
+                })
+                .withFailureHandler(error => {
+                    hideLoadingOverlay();
+                    alert("Error al guardar: " + error.message);
+                })
+                .actualizarRegistroBiopsia(fila, datosActualizados);
+        }
 
-          <div class="form-group">
-            <label>Comentarios</label>
-            <textarea id="edit_comentario" rows="3" maxlength="500">${datos.comentario}</textarea>
-          </div>
+        //-----------------------------------------
+        //  8. LÓGICA DE REPORTES
+        //-----------------------------------------
+        btnReporteMensual.addEventListener('click', function () {
+            const mes = parseInt(reportMes.value);
+            const anio = parseInt(reportAnio.value);
 
-          <div class="modal-actions">
-            <button type="button" onclick="cerrarModal()" class="btn-secondary">Cancelar</button>
-            <button type="submit" class="btn-primary">💾 Guardar Cambios</button>
-          </div>
-          
-          <input type="hidden" id="edit_fila" value="${datos.fila}">
-        </form>
-      </div>
-    `;
+            if (isNaN(mes) || isNaN(anio) || mes < 1) {
+                mostrarMensajeBusqueda("Por favor, seleccione un mes y año válidos.", "error");
+                return;
+            }
+            lastSearchParams = { type: 'mes', value: mes, value2: anio };
+            currentPage = 1;
+            performSearchWithPagination();
+        });
 
-    document.body.appendChild(modal);
+        btnDescargarPDF.addEventListener('click', function () {
+            if (!lastSearchParams || lastSearchParams.type !== 'mes') {
+                emailMessage.textContent = "Primero debe generar un reporte mensual.";
+                emailMessage.className = "message-area error";
+                emailMessage.style.display = 'block';
+                return;
+            }
 
-    // Agregar event listener al formulario
-    document.getElementById('editForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      guardarCambios();
+            const mes = lastSearchParams.value;
+            const anio = lastSearchParams.value2;
+
+            emailMessage.textContent = "Generando PDF...";
+            emailMessage.className = "message-area info";
+            emailMessage.style.display = 'block';
+            showLoadingOverlay();
+
+            google.script.run
+                .withSuccessHandler(function (url) {
+                    hideLoadingOverlay();
+                    if (url) {
+                        emailMessage.textContent = "PDF generado. Abriendo...";
+                        emailMessage.className = "message-area success";
+                        window.open(url, '_blank');
+                    } else {
+                        emailMessage.textContent = "No se pudo generar el PDF.";
+                        emailMessage.className = "message-area error";
+                    }
+                })
+                .withFailureHandler(function (error) {
+                    hideLoadingOverlay();
+                    emailMessage.textContent = "Error al generar el PDF: " + error.message;
+                    emailMessage.className = "message-area error";
+                })
+                .generarReportePDF(mes, anio);
+        });
     });
-  }
-
-  function guardarCambios() {
-    const datosActualizados = {
-      fecha_toma: document.getElementById('edit_fecha').value,
-      cedula: document.getElementById('edit_cedula').value,
-      telefono: document.getElementById('edit_telefono').value,
-      nombre_cliente: document.getElementById('edit_nombre').value,
-      frascos_gastro: parseInt(document.getElementById('edit_gastro').value) || 0,
-      frascos_colon: parseInt(document.getElementById('edit_colon').value) || 0,
-      medico: document.getElementById('edit_medico').value,
-      recibida: document.getElementById('edit_recibida').checked,
-      enviada: document.getElementById('edit_enviada').checked,
-      comentario: document.getElementById('edit_comentario').value
-    };
-
-    const fila = parseInt(document.getElementById('edit_fila').value);
-
-    console.log('💾 Guardando cambios:', datosActualizados);
-
-    google.script.run
-      .withSuccessHandler(function (resultado) {
-        console.log('✅ Registro actualizado:', resultado);
-        mostrarMensajeBusqueda("Registro actualizado correctamente", "success");
-        cerrarModal();
-        // Recargar búsqueda para mostrar cambios
-        buscarBiopsiasUI();
-      })
-      .withFailureHandler(function (error) {
-        console.error('❌ Error guardando cambios:', error);
-        mostrarMensajeBusqueda("Error al guardar: " + error.message, "error");
-      })
-      .actualizarRegistroBiopsia(fila, datosActualizados);
-  }
-
-  function cerrarModal() {
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) {
-      modal.remove();
-    }
-  }
 </script>

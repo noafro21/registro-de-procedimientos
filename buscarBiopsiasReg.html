@@ -59,12 +59,12 @@
                             <option value="11">Noviembre</option>
                             <option value="12">Diciembre</option>
                         </select>
-                        <select id="search_anio" class="search-input">
+                        <!--<select id="search_anio" class="search-input">
                             <option value="2023">2023</option>
                             <option value="2024">2024</option>
                             <option value="2025" selected>2025</option>
                             <option value="2026">2026</option>
-                        </select>
+                        </select>-->
                     </div>
 
                     <select id="search_estado" class="search-input" style="display: none;">
@@ -77,7 +77,7 @@
                     <button id="btnBuscar" type="button">🔍 Buscar</button>
                 </div>
             </div>
-            <div id="searchMessage" class="message-area"></div>
+            <div id="resultsMessage" class="message-area"></div>
         </div>
 
         <div class="report-section">
@@ -112,12 +112,29 @@
 
         <div class="results-section">
             <h2 id="reportTitle">Resultados de la Búsqueda</h2>
+            <div id="searchMessage" class="message-area"></div>
             <div id="resultado_busqueda" class="results-container"></div>
+
+            <div id="paginationControls" style="display: none; text-align: center; margin-top: 20px;">
+                <button id="prevPage" class="btn-secondary" disabled>Anterior</button>
+                <span id="pageInfo">Página 1 de 1</span>
+                <button id="nextPage" class="btn-secondary" disabled>Siguiente</button>
+                <select id="pageSize" style="margin-left: 15px;">
+                    <option value="10">10 por página</option>
+                    <option value="25">25 por página</option>
+                    <option value="50">50 por página</option>
+                </select>
+            </div>
             <div id="action-section" class="action-buttons">
                 <button id="btnDescargarPDF" class="btn-secondary">Descargar PDF</button>
                 <div id="emailMessage" class="message-area"></div>
             </div>
         </div>
+    </div>
+
+    <div id="loadingOverlay" style="display: none;">
+        <div class="spinner"></div>
+        <p>Cargando...</p>
     </div>
     <?!= include('scriptBuscarBiopsias'); ?>
     <?!= include('scriptBotonRegresar'); ?>
