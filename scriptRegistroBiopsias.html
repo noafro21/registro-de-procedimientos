@@ -1,0 +1,509 @@
+<script>
+  // ================== INICIALIZACIÓN Y CONFIGURACIÓN ==================
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Inicializando formulario de registro de biopsias...');
+
+    // Establecer la fecha actual por defecto
+    establecerFechaActual();
+
+    // Configurar validaciones en tiempo real
+    configurarValidacionesEnTiempoReal();
+
+    // Configurar contador de caracteres
+    configurarContadorCaracteres();
+
+    // Configurar cálculo automático de frascos
+    configurarCalculoFrascos();
+
+    // Cargar lista de médicos
+    cargarListaMedicos();
+
+    mostrarMensaje("✅ Formulario listo para registrar biopsias", "success");
+  });
+
+  // ================== CONFIGURACIÓN INICIAL ==================
+  function establecerFechaActual() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+
+    document.getElementById('fecha_toma').value = `${yyyy}-${mm}-${dd}`;
+    console.log('📅 Fecha actual establecida:', `${yyyy}-${mm}-${dd}`);
+  }
+
+  function cargarListaMedicos() {
+    console.log('👨‍⚕️ Cargando lista de médicos...');
+
+    google.script.run
+      .withSuccessHandler(function (medicosList) {
+        console.log('Lista de médicos recibida:', medicosList);
+        const select = document.getElementById('medico');
+
+        select.innerHTML = '<option disabled selected value="">Seleccione médico...</option>';
+
+        if (medicosList && medicosList.length > 0) {
+          medicosList.forEach(nombre => {
+            const option = document.createElement('option');
+            option.value = nombre;
+            option.textContent = nombre;
+            select.appendChild(option);
+          });
+          mostrarMensaje(`✅ ${medicosList.length} médicos cargados correctamente`, "success");
+        } else {
+          select.innerHTML += '<option disabled>No hay médicos disponibles</option>';
+          mostrarMensaje("⚠️ No se encontraron médicos en el sistema", "warning");
+        }
+      })
+      .withFailureHandler(function (error) {
+        console.error('Error cargando médicos:', error);
+        const select = document.getElementById('medico');
+        select.innerHTML = '<option disabled selected>Error al cargar médicos</option>';
+        mostrarMensaje("❌ Error al cargar lista de médicos: " + error.message, "error");
+      })
+      .obtenerPersonalFiltrado([0]); // Columna A (índice 0) para Gastroenterólogos
+  }
+
+  // ================== VALIDACIONES EN TIEMPO REAL ==================
+  function configurarValidacionesEnTiempoReal() {
+    // Validación de cédula
+    const cedulaInput = document.getElementById('cedula');
+    cedulaInput.addEventListener('input', function () {
+      validarCedula(this.value);
+    });
+    cedulaInput.addEventListener('blur', function () {
+      formatearCedula(this);
+    });
+
+    // Validación de teléfono
+    const telefonoInput = document.getElementById('telefono');
+    telefonoInput.addEventListener('input', function () {
+      validarTelefono(this.value);
+    });
+    telefonoInput.addEventListener('blur', function () {
+      formatearTelefono(this);
+    });
+
+    // Validación de nombre
+    const nombreInput = document.getElementById('nombre_cliente');
+    nombreInput.addEventListener('input', function () {
+      validarNombre(this.value);
+    });
+
+    // Validación de médico
+    const medicoSelect = document.getElementById('medico');
+    medicoSelect.addEventListener('change', function () {
+      validarMedico(this.value);
+    });
+  }
+
+  function validarCedula(cedula) {
+    console.log('🔍 [TEST] Validando cédula:', cedula);
+    const errorDiv = document.getElementById('cedula_error');
+
+    if (cedula.length === 0) {
+      console.log('✅ [TEST] Cédula vacía - válida');
+      errorDiv.textContent = '';
+      return true;
+    }
+
+    // Remover espacios y guiones para validación
+    const cedulaLimpia = cedula.replace(/[-\s]/g, '');
+    console.log('🔍 [TEST] Cédula limpia:', cedulaLimpia);
+
+    // Validación más flexible para cédula, pasaporte o DIMEX
+    // Cédula costarricense: 9 dígitos
+    // Pasaporte: puede tener letras y números (6-12 caracteres)
+    // DIMEX: 11-12 dígitos
+
+    if (cedulaLimpia.length === 0) {
+      console.log('❌ [TEST] Cédula limpia vacía');
+      errorDiv.textContent = '❌ La identificación no puede estar vacía';
+      return false;
+    }
+
+    // Permitir letras y números para mayor flexibilidad
+    const identificacionPattern = /^[A-Za-z0-9]{6,12}$/;
+    console.log('🔍 [TEST] Probando patrón:', identificacionPattern, 'contra:', cedulaLimpia);
+
+    if (!identificacionPattern.test(cedulaLimpia)) {
+      console.log('❌ [TEST] Cédula no cumple patrón');
+      errorDiv.textContent = '❌ Formato de identificación inválido (6-12 caracteres alfanuméricos)';
+      return false;
+    }
+
+    console.log('✅ [TEST] Cédula válida');
+    errorDiv.textContent = '';
+    return true;
+  }
+
+  function formatearCedula(input) {
+    let valor = input.value.replace(/[^A-Za-z0-9]/g, ''); // Solo letras y números
+
+    // Para cédulas costarricenses (solo números), aplicar formato según la longitud
+    if (/^\d+$/.test(valor)) {
+      if (valor.length >= 12) {
+        // DIMEX: 12 dígitos - Formato: 123456789012 -> 1234-5678-9012
+        valor = valor.substring(0, 4) + '-' + valor.substring(4, 8) + '-' + valor.substring(8, 12);
+      } else if (valor.length >= 11) {
+        // DIMEX: 11 dígitos - Formato: 12345678901 -> 123-4567-8901
+        valor = valor.substring(0, 3) + '-' + valor.substring(3, 7) + '-' + valor.substring(7, 11);
+      } else if (valor.length >= 9) {
+        // Cédula tradicional: 9 dígitos - Formato: 123456789 -> 1-2345-6789
+        valor = valor.substring(0, 1) + '-' + valor.substring(1, 5) + '-' + valor.substring(5, 9);
+      } else if (valor.length >= 5) {
+        // Formato parcial para entrada en progreso
+        valor = valor.substring(0, 1) + '-' + valor.substring(1, 5) + (valor.length > 5 ? '-' + valor.substring(5) : '');
+      } else if (valor.length >= 1) {
+        // Formato parcial para entrada en progreso
+        valor = valor.substring(0, 1) + (valor.length > 1 ? '-' + valor.substring(1) : '');
+      }
+    }
+    // Para pasaportes y DIMEX (con letras), no aplicar formato especial
+
+    input.value = valor;
+  }
+
+  function validarTelefono(telefono) {
+    console.log('🔍 [TEST] Validando teléfono:', telefono);
+    const errorDiv = document.getElementById('telefono_error');
+
+    if (telefono.length === 0) {
+      console.log('✅ [TEST] Teléfono vacío - válido');
+      errorDiv.textContent = '';
+      return true;
+    }
+
+    // Patrón para teléfono costarricense: 8888-8888
+    const telefonoPattern = /^\d{4}-?\d{4}$/;
+    const telefonoSinGuion = telefono.replace(/-/g, '');
+    console.log('🔍 [TEST] Teléfono sin guión:', telefonoSinGuion);
+    console.log('🔍 [TEST] Probando patrón:', telefonoPattern, 'contra:', telefonoSinGuion);
+
+    if (!telefonoPattern.test(telefonoSinGuion)) {
+      console.log('❌ [TEST] Teléfono no cumple patrón');
+      errorDiv.textContent = '❌ Formato de teléfono inválido (8888-8888)';
+      return false;
+    }
+
+    console.log('✅ [TEST] Teléfono válido');
+    errorDiv.textContent = '';
+    return true;
+  }
+
+  function formatearTelefono(input) {
+    let valor = input.value.replace(/\D/g, ''); // Solo números
+
+    if (valor.length >= 4) {
+      valor = valor.substring(0, 4) + '-' + valor.substring(4, 8);
+    }
+
+    input.value = valor;
+  }
+
+  function validarNombre(nombre) {
+    console.log('🔍 [TEST] Validando nombre:', nombre);
+    const errorDiv = document.getElementById('nombre_error');
+
+    if (nombre.length === 0) {
+      console.log('❌ [TEST] Nombre vacío');
+      errorDiv.textContent = '❌ El nombre del paciente es obligatorio';
+      return false;
+    }
+
+    if (nombre.length < 3) {
+      console.log('❌ [TEST] Nombre muy corto');
+      errorDiv.textContent = '❌ El nombre debe tener al menos 3 caracteres';
+      return false;
+    }
+
+    console.log('✅ [TEST] Nombre válido');
+    errorDiv.textContent = '';
+    return true;
+  }
+
+  function validarMedico(medico) {
+    console.log('🔍 [TEST] Validando médico:', medico);
+    const errorDiv = document.getElementById('medico_error');
+
+    if (!medico) {
+      console.log('❌ [TEST] Médico no seleccionado');
+      errorDiv.textContent = '❌ Debe seleccionar un médico';
+      return false;
+    }
+
+    console.log('✅ [TEST] Médico válido');
+    errorDiv.textContent = '';
+    return true;
+  }
+
+  // ================== CONFIGURACIONES ADICIONALES ==================
+  function configurarContadorCaracteres() {
+    const comentarioTextarea = document.getElementById('comentario');
+    const contadorSpan = document.getElementById('comentario_count');
+
+    comentarioTextarea.addEventListener('input', function () {
+      const length = this.value.length;
+      contadorSpan.textContent = length;
+
+      if (length > 450) {
+        contadorSpan.style.color = '#d32f2f';
+      } else if (length > 350) {
+        contadorSpan.style.color = '#f57c00';
+      } else {
+        contadorSpan.style.color = '#4caf50';
+      }
+    });
+  }
+
+  function configurarCalculoFrascos() {
+    const frascoGastro = document.getElementById('frascos_gastro');
+    const frascoColon = document.getElementById('frascos_colon');
+    const totalSpan = document.getElementById('total_frascos');
+
+    function calcularTotal() {
+      const gastro = parseInt(frascoGastro.value) || 0;
+      const colon = parseInt(frascoColon.value) || 0;
+      const total = gastro + colon;
+
+      totalSpan.textContent = total;
+
+      if (total === 0) {
+        totalSpan.style.color = '#f57c00';
+      } else {
+        totalSpan.style.color = '#4caf50';
+      }
+    }
+
+    frascoGastro.addEventListener('input', calcularTotal);
+    frascoColon.addEventListener('input', calcularTotal);
+
+    // Cálculo inicial
+    calcularTotal();
+  }
+
+  // ================== FUNCIONES PRINCIPALES ==================
+  function guardarBiopsia() {
+    console.log('💾 [TEST] Iniciando proceso de guardado con función de prueba...');
+
+    // Validar formulario antes de enviar
+    console.log('🔍 [TEST] Iniciando validación del formulario...');
+    const esValido = validarFormularioCompleto();
+    console.log('✅ [TEST] Resultado de validación:', esValido);
+
+    if (!esValido) {
+      console.log('❌ [TEST] Formulario inválido, deteniendo proceso');
+      mostrarMensaje("❌ Por favor, corrija los errores antes de continuar", "error");
+      return;
+    }
+
+    console.log('✅ [TEST] Formulario válido, continuando...');
+
+    // Recolectar datos directamente (como en el archivo de prueba exitoso)
+    const data = {
+      fecha_toma: document.getElementById('fecha_toma').value,
+      cedula: document.getElementById('cedula').value.replace(/[-\s]/g, ''), // Limpiar guiones
+      telefono: document.getElementById('telefono').value,
+      nombre_cliente: document.getElementById('nombre_cliente').value,
+      frascos_gastro: parseInt(document.getElementById('frascos_gastro').value) || 0,
+      frascos_colon: parseInt(document.getElementById('frascos_colon').value) || 0,
+      medico: document.getElementById('medico').value,
+      comentario: document.getElementById('comentario').value
+    };
+
+    console.log('📋 Datos a enviar:', data);
+    console.log('📋 Serialización JSON:', JSON.stringify(data));
+
+    // Validar que los datos obligatorios están presentes
+    if (!data.fecha_toma || !data.nombre_cliente || !data.medico) {
+      mostrarMensaje("❌ Faltan datos obligatorios", "error");
+      return;
+    }
+
+    mostrarMensaje("💾 Guardando biopsia...", "info");
+
+    // Deshabilitar botón para evitar doble envío
+    const submitButton = document.querySelector('button[type="submit"]');
+    if (!submitButton) {
+      console.error('❌ Error: No se encontró el botón de envío');
+      mostrarMensaje("❌ Error interno del formulario", "error");
+      return;
+    }
+
+    const originalText = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '⏳ Guardando...';
+
+    console.log('🚀 [TEST] Ejecutando google.script.run con función de prueba...');
+    console.log('📊 [TEST] Datos completos a enviar:');
+    console.log('   data:', data);
+
+    google.script.run
+      .withSuccessHandler(function (resultado) {
+        console.log('✅ [TEST] Respuesta exitosa del backend:', resultado);
+        console.log('✅ [TEST] Biopsia guardada exitosamente');
+        mostrarMensaje("✅ Biopsia guardada correctamente", "success");
+
+        // Rehabilitar botón
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+
+        // Limpiar formulario después del éxito
+        setTimeout(() => {
+          limpiarFormulario();
+        }, 1500);
+      })
+      .withFailureHandler(function (error) {
+        console.error('❌ [TEST] Error completo:', error);
+        console.error('❌ [TEST] Mensaje de error:', error.message);
+        console.error('❌ [TEST] Stack trace:', error.stack);
+        mostrarMensaje("❌ Error al guardar la biopsia: " + error.message, "error");
+
+        // Rehabilitar botón
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+      })
+      .guardarBiopsia(data);
+  }
+
+  function validarFormularioCompleto() {
+    console.log('🔍 [TEST] Entrando a validarFormularioCompleto...');
+    let esValido = true;
+
+    // Validar campos obligatorios
+    const nombre = document.getElementById('nombre_cliente').value;
+    const medico = document.getElementById('medico').value;
+    const fechaToma = document.getElementById('fecha_toma').value;
+
+    console.log('📋 [TEST] Valores extraídos:');
+    console.log('   - Nombre:', nombre);
+    console.log('   - Médico:', medico);
+    console.log('   - Fecha:', fechaToma);
+
+    if (!fechaToma) {
+      console.log('❌ [TEST] Fecha de toma faltante');
+      mostrarMensaje("❌ La fecha de toma es obligatoria", "error");
+      esValido = false;
+    }
+
+    console.log('🔍 [TEST] Validando nombre...');
+    if (!validarNombre(nombre)) {
+      console.log('❌ [TEST] Validación de nombre falló');
+      esValido = false;
+    }
+
+    console.log('🔍 [TEST] Validando médico...');
+    if (!validarMedico(medico)) {
+      console.log('❌ [TEST] Validación de médico falló');
+      esValido = false;
+    }
+
+    // Validar formatos si hay datos
+    const cedula = document.getElementById('cedula').value;
+    const telefono = document.getElementById('telefono').value;
+
+    console.log('🔍 [TEST] Validando formatos opcionales...');
+    console.log('   - Cédula:', cedula);
+    console.log('   - Teléfono:', telefono);
+
+    if (cedula && !validarCedula(cedula)) {
+      console.log('❌ [TEST] Validación de cédula falló');
+      esValido = false;
+    }
+
+    if (telefono && !validarTelefono(telefono)) {
+      console.log('❌ [TEST] Validación de teléfono falló');
+      esValido = false;
+    }
+
+    console.log('✅ [TEST] Validación completada. Resultado final:', esValido);
+    return esValido;
+  }
+
+  function recolectarDatosFormulario() {
+    console.log('🔍 Iniciando recolección de datos...');
+
+    // Verificar que los elementos existen
+    const elementos = {
+      fecha_toma: document.getElementById('fecha_toma'),
+      cedula: document.getElementById('cedula'),
+      telefono: document.getElementById('telefono'),
+      nombre_cliente: document.getElementById('nombre_cliente'),
+      frascos_gastro: document.getElementById('frascos_gastro'),
+      frascos_colon: document.getElementById('frascos_colon'),
+      medico: document.getElementById('medico'),
+      comentario: document.getElementById('comentario')
+    };
+
+    console.log('🔍 Elementos encontrados:', elementos);
+
+    // Verificar que todos los elementos existen
+    for (const [key, element] of Object.entries(elementos)) {
+      if (!element) {
+        console.error(`❌ Elemento no encontrado: ${key}`);
+        return null;
+      }
+    }
+
+    // Obtener la cédula y limpiarla de guiones para almacenamiento
+    const cedulaRaw = elementos.cedula.value.trim();
+    const cedulaLimpia = cedulaRaw.replace(/[-\s]/g, ''); // Remover guiones y espacios
+
+    const datos = {
+      fecha_toma: elementos.fecha_toma.value,
+      cedula: cedulaLimpia, // Enviar sin guiones
+      telefono: elementos.telefono.value.trim(),
+      nombre_cliente: elementos.nombre_cliente.value.trim(),
+      frascos_gastro: parseInt(elementos.frascos_gastro.value) || 0,
+      frascos_colon: parseInt(elementos.frascos_colon.value) || 0,
+      medico: elementos.medico.value,
+      comentario: elementos.comentario.value.trim()
+    };
+
+    console.log('📊 Datos recolectados:', datos);
+    return datos;
+  }
+
+  function limpiarFormulario() {
+    console.log('🗑️ Limpiando formulario...');
+
+    // Resetear formulario
+    document.getElementById('registroBiopsiaForm').reset();
+
+    // Restablecer valores por defecto
+    establecerFechaActual();
+    document.getElementById('frascos_gastro').value = "0";
+    document.getElementById('frascos_colon').value = "0";
+
+    // Limpiar mensajes de error
+    document.querySelectorAll('.field-error').forEach(div => {
+      div.textContent = '';
+    });
+
+    // Recalcular total de frascos
+    const totalSpan = document.getElementById('total_frascos');
+    totalSpan.textContent = '0';
+    totalSpan.style.color = '#f57c00';
+
+    // Resetear contador de caracteres
+    const contadorSpan = document.getElementById('comentario_count');
+    contadorSpan.textContent = '0';
+    contadorSpan.style.color = '#4caf50';
+
+    mostrarMensaje("🗑️ Formulario limpiado", "info");
+  }
+
+  function mostrarMensaje(mensaje, tipo) {
+    const mensajeDiv = document.getElementById('formMessage');
+    mensajeDiv.textContent = mensaje;
+    mensajeDiv.className = 'message-container ' + tipo;
+
+    // Auto-ocultar mensajes exitosos e informativos
+    if (tipo === 'success' || tipo === 'info') {
+      setTimeout(() => {
+        mensajeDiv.textContent = '';
+        mensajeDiv.className = 'message-container';
+      }, 5000);
+    }
+  }
+</script>
