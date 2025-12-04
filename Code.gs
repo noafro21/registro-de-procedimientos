@@ -19,6 +19,8 @@ const TIPOS_PERSONAL = {
   5: "Secretaria",
 };
 
+// URL del logo usado en comprobantes
+const LOGO_URL = "https://centrodigestivointegral.com/wp-content/uploads/2022/11/CDI_Logo-Full-color.png";
 // --- Funciones principales del menú ---
 function onOpen() {
   SpreadsheetApp.getUi()
@@ -103,6 +105,11 @@ function getPageHtml(pageName) {
         template = HtmlService.createTemplateFromFile("reportePagoHorasExtras");
         pageTitle = "Reporte de Horas Extras";
         break;
+      case "comprobante":
+        // Página para generar comprobante de asistencia (Index.html)
+        template = HtmlService.createTemplateFromFile("Index");
+        pageTitle = "Comprobante de Asistencia";
+        break;
       case "registroBiopsias": // Nuevo
         template = HtmlService.createTemplateFromFile("registroBiopsias");
         pageTitle = "Registro de Biopsias";
@@ -183,6 +190,10 @@ function doGet(e) {
       case "reportePagoHorasExtras":
         template = HtmlService.createTemplateFromFile("reportePagoHorasExtras");
         pageTitle = "Reporte de Horas Extras";
+        break;
+      case "comprobante":
+        template = HtmlService.createTemplateFromFile("Index");
+        pageTitle = "Comprobante de Asistencia";
         break;
       case "registroBiopsias": // Nuevo
         template = HtmlService.createTemplateFromFile("registroBiopsias");
@@ -312,6 +323,129 @@ function normalizarNombre(str) {
     .replace(/\s+/g, " ")
     .trim()
     .toUpperCase();
+}
+
+/**
+ * Genera el HTML del comprobante de asistencia a partir de los datos recibidos.
+ * @param {Object} formData Datos del formulario enviados desde el cliente.
+ * @return {string} HTML formateado del comprobante.
+ */
+function generarComprobante(formData) {
+  try {
+    Logger.log('🔔 generarComprobante llamado con formData: ' + JSON.stringify(formData));
+  } catch (e) {
+    Logger.log('⚠️ generarComprobante: no se pudo serializar formData');
+  }
+
+  try {
+    const {
+    nombre,
+    cedula,
+    tipoCita,
+    especialista,
+    horaInicio,
+    horaFin,
+    fecha,
+    generarAcompanante,
+    acompanianteNombre,
+    acompanianteCedula,
+  } = formData;
+
+  // Formatear la fecha (esperada como YYYY-MM-DD) a DD/MM/YYYY
+  let fechaFormateada = fecha || '';
+  try {
+    const parts = String(fecha).split('-');
+    if (parts.length === 3) {
+      fechaFormateada = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+  } catch (e) {
+    fechaFormateada = fecha;
+  }
+
+  let cuerpoComprobante = '';
+
+  if (generarAcompanante) {
+    const nombreAcomp = (acompanianteNombre || '').toUpperCase();
+    cuerpoComprobante = `
+      <p>Por medio de la presente se hace constar que <strong>${nombreAcomp}</strong>, identificado(a) con cédula <strong>${acompanianteCedula || ''}</strong>, asistió a nuestro centro <strong>como acompañante</strong> del paciente <strong>${(nombre || '').toUpperCase()}</strong>, cédula <strong>${cedula || ''}</strong>, en su cita programada.</p>
+      
+      <p>Los detalles de la cita a la que asistió son los siguientes:</p>
+      
+      <div style="margin-left: 20px;">
+          <p class="mb-1"><strong>Fecha:</strong> ${fechaFormateada}</p>
+          <p class="mb-1"><strong>Motivo de la Cita:</strong> ${tipoCita || ''}</p>
+          <p class="mb-1"><strong>Especialista:</strong> ${especialista || ''}</p>
+          <p class="mb-1"><strong>Horario:</strong> llegada: ${horaInicio || ''} - salida: ${horaFin || ''}</p>
+      </div>
+      
+      <p class="mt-4">La asistencia se registró en el <strong>Centro Digestivo Integral</strong>, Sabana Sur.</p>
+    `;
+  } else {
+    cuerpoComprobante = `
+      <p>Por medio de la presente se hace constar que <strong>${(nombre || '').toUpperCase()}</strong>, identificado(a) con cédula <strong>${cedula || ''}</strong>, asistió a una cita en nuestro centro.</p>
+      
+      <p>Los detalles de la cita son los siguientes:</p>
+      
+      <div style="margin-left: 20px;">
+          <p class="mb-1"><strong>Fecha:</strong> ${fechaFormateada}</p>
+          <p class="mb-1"><strong>Motivo de la Cita:</strong> ${tipoCita || ''}</p>
+          <p class="mb-1"><strong>Especialista:</strong> ${especialista || ''}</p>
+          <p class="mb-1"><strong>Horario:</strong> llegada ${horaInicio || ''} - salida ${horaFin || ''}</p>
+      </div>
+      
+      <p class="mt-4">La asistencia se registró en el <strong>Centro Digestivo Integral</strong>, Sabana Sur.</p>
+    `;
+  }
+
+  const content = `
+    <div class="text-center mb-4">
+        <img src="${LOGO_URL}" alt="Logo del Centro" style="max-width: 150px; height: auto; ">
+    </div>
+    
+    <h3 class="mb-5" style="font-family: Arial, sans-serif; text-align: center;"><strong>Comprobante de Asistencia</strong></h3>
+    
+    <div style="font-size: 12pt; font-family: Arial, sans-serif; text-align: left;">
+        ${cuerpoComprobante}
+    </div>
+    
+    <div class="mt-5 mb-5" style="font-size: 12pt; font-family: Arial, sans-serif; text-align: left;">
+        <p>Quedamos atentos a cualquier consulta.</p>
+    </div>
+    
+    <div class="d-flex justify-content-between align-items-end pt-5" style="border-top: 1px solid #ccc; margin-top: 40px; font-size: 10pt; font-family: Arial, sans-serif;">
+        <div style="text-align: left;">
+            <p class="mb-1"><span style="color:#007bff;">&#9990;</span> +506 2102-0846</p>
+            <p class="mb-1"><span style="color:#007bff;">&#9990;</span> +506 8658-4968</p>
+            <p class="mb-1"><span style="color:#dc3545;">&#9993;</span> info@centrodigestivointegral.com</p>
+            <p class="mb-0"><span style="color:#28a745;">&#127968;</span> Sabana Sur, Costa Rica</p>
+        </div>
+        <div style="text-align: right;">
+            <img src="${LOGO_URL}" alt="Logo Footer" style="max-width: 80px; height: auto;">
+        </div>
+    </div>
+  `;
+
+  const htmlOutput = `
+    <div style="width: 100%; max-width: 650px; margin: 0 auto; padding: 20px; position: relative; height: auto;">
+      <img src="${LOGO_URL}" alt="Marca de Agua" style="
+        position: absolute; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%) rotate(-45deg); 
+        opacity: 0.1; 
+        width: 300px; 
+        height: auto; 
+        pointer-events: none;
+      ">
+      ${content}
+    </div>
+  `;
+
+  return htmlOutput;
+  } catch (error) {
+    Logger.log('❌ Error en generarComprobante: ' + (error && error.message ? error.message : String(error)));
+    throw new Error('Error al generar el comprobante: ' + (error && error.message ? error.message : String(error)));
+  }
 }
 
 /**
@@ -5887,4 +6021,73 @@ function actualizarRegistroBiopsia(fila, datos) {
 function generarReportePDF(mes, anio) {
     // Placeholder
     return "https://example.com/fake.pdf";
+}
+
+// ===== FUNCIONES DE PRUEBA RÁPIDA PARA EL COMPROBANTE =====
+/**
+ * Genera un comprobante de ejemplo y lo retorna como HtmlOutput.
+ * Útil para ejecutar desde el editor de Apps Script (Run -> abrirComprobantePreview)
+ * y comprobar visualmente el HTML generado por `generarComprobante`.
+ */
+function testGenerarComprobante_sample() {
+  const sample = {
+    nombre: 'Juan Pérez',
+    cedula: '1-234-567',
+    tipoCita: 'Consulta médica',
+    especialista: 'Dra. María López',
+    horaInicio: '09:00 a.m.',
+    horaFin: '09:30 a.m.',
+    fecha: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+    generarAcompanante: false,
+    acompanianteNombre: '',
+    acompanianteCedula: ''
+  };
+
+  const html = generarComprobante(sample);
+  Logger.log('DEBUG: HTML del comprobante generado (longitud): ' + (html ? html.length : 0));
+  return HtmlService.createHtmlOutput(html).setTitle('Preview - Comprobante de Asistencia');
+}
+
+/**
+ * Helper para ejecutar la vista previa desde el editor.
+ * Ejecutar: Run -> seleccionar `abrirComprobantePreview` -> Run
+ */
+function abrirComprobantePreview() {
+  return testGenerarComprobante_sample();
+}
+
+/**
+ * Muestra el generador de comprobantes como un diálogo modal en Google Sheets.
+ * Útil cuando la app se ejecuta desde la hoja (Spreadsheet UI) para no reemplazar
+ * completamente el documento y asegurar disponibilidad de `google.script.run`.
+ */
+function mostrarComprobante() {
+  try {
+    const html = HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setWidth(900)
+      .setHeight(800)
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+
+    SpreadsheetApp.getUi().showModalDialog(html, 'Generador de Comprobantes');
+    // Si se pudo abrir el diálogo en la hoja, devolvemos null para indicar
+    // que no es necesario que el cliente reemplace la página completa.
+    return null;
+  } catch (error) {
+    Logger.log('❌ Error en mostrarComprobante: ' + error.message);
+    // Fallback: si no estamos en un contexto donde `SpreadsheetApp.getUi()`
+    // está disponible (por ejemplo, al ejecutar como Web App), devolvemos
+    // el HTML de la plantilla para que el cliente lo renderice.
+    try {
+      const fallbackHtml = HtmlService.createTemplateFromFile('Index')
+        .evaluate()
+        .getContent();
+      Logger.log('ℹ️ mostrarComprobante: devolviendo HTML como fallback.');
+      return fallbackHtml;
+    } catch (e) {
+      Logger.log('❌ mostrarComprobante - fallo al generar fallback HTML: ' + e.message);
+      // Si tampoco podemos generar el HTML por alguna razón, propagamos el error
+      throw error;
+    }
+  }
 }

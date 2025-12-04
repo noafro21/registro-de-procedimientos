@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <!-- Carga Bootstrap 5 desde CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Carga Font Awesome para iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <style>
+    /* Estilo para impresión */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #printArea, #printArea * {
+            visibility: visible;
+        }
+        #printArea {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            /* Quitar el centrado Flex para permitir que la estructura HTML tome el control */
+            display: block; 
+            padding: 50px; 
+        }
+        /* Ocultar botones e inputs en la impresión */
+        .no-print {
+            display: none !important;
+        }
+    }
+    /* Estilo para el contenedor principal centrado en pantalla */
+    .app-container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+    }
+    /* Estilo para separar visualmente la sección del acompañante */
+    .companion-section {
+        border-top: 1px dashed #ccc;
+        padding-top: 15px;
+        margin-top: 15px;
+    }
+  </style>
+</head>
+<body class="bg-light">
+
+<div class="app-container bg-white shadow-lg rounded p-4">
+    <h1 class="text-center text-primary mb-4">📝 Generador de Comprobantes de Asistencia</h1>
+    <div class="mb-3">
+        <button class="btn btn-outline-secondary" id="backToMenuBtn">↩️ Volver al Menú Principal</button>
+    </div>
+    
+    <!-- Área del Formulario -->
+    <div id="formArea" class="no-print">
+        <form id="comprobanteForm">
+            <div class="row g-3">
+                
+                <!-- Datos del Paciente -->
+                <h5 class="mt-3 text-primary">Datos del Paciente Principal</h5>
+                <div class="col-md-6">
+                    <label for="nombre" class="form-label">Nombre Completo del Paciente</label>
+                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="cedula" class="form-label">Cédula del Paciente</label>
+                    <input type="text" class="form-control" id="cedula" name="cedula" pattern="[0-9\-]+" title="Solo números y guiones son permitidos" required>
+                </div>
+
+                <!-- Opcion Acompañante (Checkbox) -->
+                <div class="col-12 companion-section">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="generarAcompanante" name="generarAcompanante">
+                        <label class="form-check-label" for="generarAcompanante">
+                            Generar comprobante para un acompañante
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Campos Acompañante (Inicialmente Ocultos) -->
+                <div id="acompanianteFields" class="row g-3" style="display: none;">
+                    <h5 class="mt-3 text-success">Datos del Acompañante</h5>
+                    <div class="col-md-6">
+                        <label for="acompanianteNombre" class="form-label">Nombre Completo del Acompañante</label>
+                        <!-- 'required' attribute is managed by JS -->
+                        <input type="text" class="form-control" id="acompanianteNombre" name="acompanianteNombre">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="acompanianteCedula" class="form-label">Cédula del Acompañante</label>
+                        <!-- 'required' attribute is managed by JS -->
+                        <input type="text" class="form-control" id="acompanianteCedula" name="acompanianteCedula" pattern="[0-9\-]+" title="Solo números y guiones son permitidos">
+                    </div>
+                </div>
+                
+                <!-- DETALLES DE LA CITA -->
+                <h5 class="mt-3 text-primary">Detalles de la Cita</h5>
+
+                <!-- Fecha y Tipo de Cita -->
+                <div class="col-md-6">
+                    <label for="fecha" class="form-label">Fecha de la Cita</label>
+                    <input type="date" class="form-control" id="fecha" name="fecha" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="tipoCita" class="form-label">Tipo de Cita</label>
+                    <select class="form-select" id="tipoCita" name="tipoCita" required>
+                        <option value="" disabled selected>Seleccione el tipo de cita</option>
+                        <option value="Consulta de endocrinología">Consulta de Endocrinología</option>
+                        <option value="Gastroscopía">Gastroscopia</option>
+                        <option value="Colonoscopía">Colonoscopia</option>
+                        <option value="Gastrocolonoscopía">Gastrocolonoscopia</option>
+                        <option value="Rectoscopía">Rectoscopia</option>
+                        <option value="Consulta de gastroenterología">Consulta de Gastroenterología</option>
+                        <option value="Consulta de nutrición">Consulta de Nutrición</option>
+                        <option value="Ultrasonido">Ultrasonido</option>
+                        <option value="Consulta médica">Consulta Médica General</option>
+                    </select>
+                </div>
+                
+                <!-- Especialista -->
+                <div class="col-12">
+                    <label for="especialista" class="form-label">Especialista (Dr./Dra.)</label>
+                    <input type="text" class="form-control" id="especialista" name="especialista" required>
+                </div>
+
+                <!-- Horario (usando input type="time" para cualquier minuto) -->
+                <div class="col-md-6">
+                    <label for="horaInicio" class="form-label">Hora de Llegada (Hora y Minuto)</label>
+                    <input type="time" class="form-control" id="horaInicio" name="horaInicio" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="horaFin" class="form-label">Hora de Salida (Hora y Minuto)</label>
+                    <input type="time" class="form-control" id="horaFin" name="horaFin" required>
+                </div>
+
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mt-4">Generar Comprobante</button>
+        </form>
+    </div>
+
+    <!-- Área de Resultado y Impresión -->
+    <div id="resultArea" class="mt-4" style="display: none;">
+        <h3 class="text-center text-success mb-3">✅ Comprobante Generado</h3>
+        
+        <!-- Contenedor del Comprobante para Impresión -->
+        <div id="printArea" class="border p-4 mb-3" style="min-height: 250px;">
+            <!-- El contenido del comprobante se insertará aquí -->
+        </div>
+
+        <div class="no-print d-grid gap-2">
+            <button class="btn btn-success" onclick="window.print()">🖨️ Imprimir Comprobante</button>
+            <button class="btn btn-secondary" onclick="resetForm()">↩️ Generar Nuevo</button>
+        </div>
+    </div>
+    
+    <!-- Área de Mensajes de Estado/Error -->
+    <div id="statusMessage" class="mt-3 alert d-none" role="alert"></div>
+
+</div>
+
+<script>
+    // Referencias a elementos del DOM
+    const form = document.getElementById('comprobanteForm');
+    const formArea = document.getElementById('formArea');
+    const resultArea = document.getElementById('resultArea');
+    const printArea = document.getElementById('printArea');
+    const statusMessage = document.getElementById('statusMessage');
+    const horaInicioInput = document.getElementById('horaInicio');
+    const horaFinInput = document.getElementById('horaFin');
+    const fechaInput = document.getElementById('fecha');
+    
+    // Elementos nuevos para el acompañante
+    const generarAcompananteCheckbox = document.getElementById('generarAcompanante');
+    const acompanianteFieldsDiv = document.getElementById('acompanianteFields');
+    const acompanianteNombreInput = document.getElementById('acompanianteNombre');
+    const acompanianteCedulaInput = document.getElementById('acompanianteCedula');
+
+    // Listener para mostrar/ocultar campos de acompañante y manejar 'required'
+    generarAcompananteCheckbox.addEventListener('change', function() {
+        const isChecked = this.checked;
+        // Usa 'flex' ya que el div interno es un row g-3
+        acompanianteFieldsDiv.style.display = isChecked ? 'flex' : 'none'; 
+
+        // Gestionar el atributo 'required'
+        acompanianteNombreInput.required = isChecked;
+        acompanianteCedulaInput.required = isChecked;
+    });
+
+    /**
+     * Convierte la hora actual (HH:MM) a formato de 12 horas (hh:mm a.m./p.m.).
+     * @param {string} militaryTime - Hora en formato militar HH:MM (ej: "13:05").
+     * @returns {string} Hora formateada (ej: "01:05 p.m.").
+     */
+    function formatTime12Hour(militaryTime) {
+        if (!militaryTime) return '';
+        const [hour, minute] = militaryTime.split(':').map(Number);
+        
+        let displayHour = (hour % 12) || 12; // Convierte 0 a 12 para PM
+        let period = hour < 12 ? 'a.m.' : 'p.m.';
+        
+        // Asegurar que la hora siempre tenga 2 dígitos (ej: 09) y el minuto también.
+        // Nota: Se usa el formato 'H:MM' para la hora (sin cero inicial para la hora) ya que es más común en español para el formato de 12h.
+        return `${displayHour}:${String(minute).padStart(2, '0')} ${period}`;
+    }
+
+    /**
+     * Establece el valor de los inputs de hora y fecha.
+     */
+    function setupInputs() {
+        const now = new Date();
+        
+        // 1. Hora actual para preseleccionar Hora de Llegada
+        const hour = String(now.getHours()).padStart(2, '0');
+        const minute = String(now.getMinutes()).padStart(2, '0');
+        const currentTimeMilitary = `${hour}:${minute}`;
+        horaInicioInput.value = currentTimeMilitary;
+        horaFinInput.value = ''; // Limpiar Hora de Salida
+
+        // 2. Fecha actual para preseleccionar Fecha
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        fechaInput.value = `${year}-${month}-${day}`;
+        
+        // 3. Limpiar y ocultar campos de acompañante al inicio
+        acompanianteNombreInput.value = '';
+        acompanianteCedulaInput.value = '';
+        generarAcompananteCheckbox.checked = false;
+        acompanianteFieldsDiv.style.display = 'none';
+        acompanianteNombreInput.required = false;
+        acompanianteCedulaInput.required = false;
+    }
+
+    // Inicializar inputs de hora y fecha al cargar el script
+    setupInputs();
+
+    // Botón para volver al menú principal (quita parámetros de la URL)
+    document.getElementById('backToMenuBtn').addEventListener('click', function(){
+        try {
+            // Construir la URL base sin querystring
+            const baseUrl = window.location.origin + window.location.pathname;
+            window.top.location.href = baseUrl;
+        } catch (e) {
+            // Fallback: recargar la página actual sin parámetros
+            window.location.href = window.location.href.split('?')[0];
+        }
+    });
+
+
+    // Manejo del envío del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Mostrar mensaje de carga
+        showStatus('Generando comprobante...', 'alert-info');
+        
+        // Recolectar datos del formulario
+        const formData = {};
+        new FormData(form).forEach((value, key) => formData[key] = value.trim());
+        
+        // Añadir el estado del checkbox al formData
+        formData.generarAcompanante = generarAcompananteCheckbox.checked;
+
+        // Convertir la hora militar a formato de 12 horas antes de enviar al backend
+        // Los inputs de tipo 'time' retornan HH:MM (militar), se convierte a 12h para el comprobante.
+        formData.horaInicio = formatTime12Hour(formData.horaInicio);
+        formData.horaFin = formatTime12Hour(formData.horaFin);
+
+        // Deshabilitar botón para evitar envíos múltiples
+        const submitBtn = form.querySelector('button[type="submit"]');
+        submitBtn.disabled = true;
+
+        // Diagnóstico rápido: verificar que google.script.run esté disponible
+        if (!(window.google && google.script && google.script.run)) {
+            showStatus('El entorno actual no permite ejecutar funciones del servidor (google.script.run no disponible). Asegúrate de abrir esta página como Web App de Apps Script o desde el panel de Apps Script.', 'alert-danger');
+            console.error('google.script.run no disponible en este entorno.');
+            submitBtn.disabled = false;
+            return;
+        }
+
+        console.log('DEBUG (Client): Enviando formData al servidor:', formData);
+
+        // Llamar a la función del lado del servidor (Code.gs)
+        google.script.run
+            .withSuccessHandler(function(response){
+                console.log('DEBUG (Client): respuesta recibida (longitud):', response ? (response.length || 0) : 0);
+                onSuccess(response);
+            })
+            .withFailureHandler(function(err){
+                console.error('DEBUG (Client): Error desde servidor:', err);
+                // if err.message may not exist
+                const message = err && err.message ? err.message : (err && err.toString ? err.toString() : 'Error desconocido');
+                onFailure({message});
+            })
+            .generarComprobante(formData);
+    });
+
+    /**
+     * Callback de éxito después de llamar a generarComprobante().
+     * @param {string} htmlContent El HTML del comprobante generado.
+     */
+    function onSuccess(htmlContent) {
+        printArea.innerHTML = htmlContent;
+        formArea.style.display = 'none';
+        resultArea.style.display = 'block';
+        showStatus('Comprobante generado con éxito. Listo para imprimir.', 'alert-success');
+        document.getElementById('comprobanteForm').querySelector('button[type="submit"]').disabled = false;
+    }
+
+    /**
+     * Callback de fallo.
+     * @param {Error} error El objeto de error.
+     */
+    function onFailure(error) {
+        showStatus(`Error al generar: ${error.message}`, 'alert-danger');
+        document.getElementById('comprobanteForm').querySelector('button[type="submit"]').disabled = false;
+    }
+
+    /**
+     * Muestra un mensaje de estado o error.
+     * @param {string} message El texto del mensaje.
+     * @param {string} className La clase de Bootstrap para el estilo (ej: 'alert-info').
+     */
+    function showStatus(message, className) {
+        statusMessage.textContent = message;
+        // Limpiar clases existentes y añadir las nuevas
+        statusMessage.className = `mt-3 alert`;
+        statusMessage.classList.add(className);
+        statusMessage.classList.remove('d-none');
+    }
+
+    /**
+     * Restablece la vista para ingresar un nuevo comprobante.
+     */
+    function resetForm() {
+        form.reset();
+        // Vuelve a preseleccionar la hora y fecha al resetear
+        setupInputs();
+        
+        resultArea.style.display = 'none';
+        formArea.style.display = 'block';
+        printArea.innerHTML = '';
+        statusMessage.classList.add('d-none');
+    }
+</script>
+
+</body>
+</html>
